@@ -135,6 +135,11 @@ export default function SalesChallansPage() {
   // ─── Create Challan ──────────────────────────────────────────────────────────
   const onCreateSubmit = async (data: CreateChallanForm, confirm = false) => {
     try {
+      // Guard: confirm requires all items to be linked to a product (via quick-add)
+      if (confirm && data.items.some(i => !i.productId)) {
+        showToast('error', 'To confirm a challan, all items must be added via "Quick Add Product" so stock can be tracked. Remove manual rows or save as draft.')
+        return
+      }
       const res = await axiosClient.post('/challans', data)
       const newChallan = res.data?.data
       if (confirm && newChallan?.id) {
@@ -150,6 +155,7 @@ export default function SalesChallansPage() {
       showToast('error', err.message || 'Failed to save challan.')
     }
   }
+
 
   // ─── Actions ────────────────────────────────────────────────────────────────
   const handleConfirm = async (challan: Challan) => {

@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean
   login: (user: User, token: string) => void
   logout: () => void
+  updateUser: (partial: Partial<User>) => void
   isAuthenticated: boolean
 }
 
@@ -52,6 +53,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window !== 'undefined') {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user: formattedUser, token: authToken }))
     }
+  }, [])
+
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, ...partial }
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw)
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...parsed, user: updated }))
+          } catch {}
+        }
+      }
+      return updated
+    })
   }, [])
 
   useEffect(() => {
@@ -116,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     login,
     logout,
+    updateUser,
     isAuthenticated: !!user && !!token,
   }
 
