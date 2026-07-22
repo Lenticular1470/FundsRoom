@@ -114,3 +114,78 @@ export const getReportsService = async () => {
   };
 };
 
+export const getInventoryReportService = async (query: any) => {
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: "desc" }
+  });
+
+  let totalProducts = products.length;
+  let totalStock = 0;
+  let totalValue = 0;
+  let lowStockCount = 0;
+
+  const categoryMap: Record<string, { category: string; stock: number; value: number }> = {};
+
+  const mappedProducts = products.map((p) => {
+    const qty = p.currentStock || 0;
+    const price = Number(p.price) || 0;
+    const value = qty * price;
+
+    totalStock += qty;
+    totalValue += value;
+
+    if (qty <= (p.minimumStock || 0)) {
+      lowStockCount++;
+    }
+
+    const cat = p.category || "General";
+    if (!categoryMap[cat]) {
+      categoryMap[cat] = { category: cat, stock: 0, value: 0 };
+    }
+    categoryMap[cat].stock += qty;
+    categoryMap[cat].value += value;
+
+    return {
+      sku: p.sku,
+      name: p.name,
+      category: p.category,
+      stock: qty,
+      price: price,
+      value: value,
+      status: qty === 0 ? "OUT_OF_STOCK" : qty <= (p.minimumStock || 0) ? "LOW_STOCK" : "IN_STOCK",
+    };
+  });
+
+  return {
+    summary: {
+      totalProducts,
+      totalStock,
+      totalValue,
+      lowStockCount,
+    },
+    categories: Object.values(categoryMap),
+    products: mappedProducts,
+  };
+};
+
+export const getMovementsReportService = async (query: any) => {
+  const movements = await prisma.stockMovement.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      product: true,
+      createdBy: true,
+    }
+  });
+
+  return movements.map((m) => ({
+    id: m.id,
+    sku: m.product?.sku || "",
+    productName: m.product?.name || "Unknown Product",
+    movementType: m.movementType,
+    quantity: m.quantity,
+    reason: m.reason,
+    createdBy: m.createdBy?.name || "System",
+    createdAt: m.createdAt,
+  }));
+};
+

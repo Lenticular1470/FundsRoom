@@ -143,3 +143,142 @@ export const getDashboardStatsService = async () => {
   };
 };
 
+export const getWarehouseDashboardStatsService = async () => {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // 1. Stats Calculations
+  const [
+    totalProducts,
+    productsData,
+    todayStockInRes,
+    todayStockOutRes,
+    recentMovementsRaw,
+  ] = await Promise.all([
+    prisma.product.count(),
+    prisma.product.findMany({
+      select: {
+        id: true,
+        currentStock: true,
+        minimumStock: true,
+        price: true,
+        warehouse: true,
+      }
+    }),
+    prisma.stockMovement.aggregate({
+      where: {
+        movementType: "IN",
+        createdAt: { gte: startOfDay },
+      },
+      _sum: { quantity: true },
+    }),
+    prisma.stockMovement.aggregate({
+      where: {
+        movementType: "OUT",
+        createdAt: { gte: startOfDay },
+      },
+      _sum: { quantity: true },
+    }),
+    prisma.stockMovement.findMany({
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: {
+        product: true,
+        createdBy: true,
+      }
+    }),
+  ]);
+
+  let totalInventoryQuantity = 0;
+  let totalInventoryValue = 0;
+  let lowStockCount = 0;
+  const zoneMap: Record<string, number> = {};
+
+  productsData.forEach((p) => {
+    const qty = p.currentStock || 0;
+    const price = Number(p.price) || 0;
+    totalInventoryQuantity += qty;
+    totalInventoryValue += qty * price;
+
+    if (qty <= (p.minimumStock || 0)) {
+      lowStockCount++;
+    }
+
+    const zone = p.warehouse || "Overflow Storage";
+    zoneMap[zone] = (zoneMap[zone] || 0) + qty;
+  });
+
+  const zoneStorage = Object.entries(zoneMap).map(([zone, value]) => ({
+    zone,
+    value,
+  }));
+
+  // Today's Stock In / Out
+  const todayStockIn = todayStockInRes._sum.quantity || 0;
+  const todayStockOut = todayStockOutRes._sum.quantity || 0;
+
+  // Recent Movements
+  const recentMovements = recentMovementsRaw.map((sm) => ({
+    id: sm.id,
+    productName: sm.product?.name || "Unknown",
+    movementType: sm.movementType,
+    quantity: sm.quantity,
+    createdBy: sm.createdBy?.name || "System",
+    createdAt: sm.createdAt,
+    reason: sm.reason,
+  }));
+
+  // Stock Movement History (Last 7 Days)
+  const historyMap: Record<string, { date: string; stockIn: number; stockOut: number }> = {};
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const key = d.toISOString().split("T")[0];
+    historyMap[key] = { date: dateStr, stockIn: 0, stockOut: 0 };
+  }
+
+  const startOf7DaysAgo = new Date();
+  startOf7DaysAgo.setDate(now.getDate() - 7);
+
+  const last7DaysMovements = await prisma.stockMovement.findMany({
+    where: {
+      createdAt: { gte: startOf7DaysAgo },
+    },
+  });
+
+  last7DaysMovements.forEach((sm) => {
+    if (!sm.createdAt) return;
+    const key = sm.createdAt.toISOString().split("T")[0];
+    if (historyMap[key]) {
+      if (sm.movementType === "IN") {
+        historyMap[key].stockIn += sm.quantity;
+      } else {
+        historyMap[key].stockOut += sm.quantity;
+      }
+    }
+  });
+
+  const stockHistory = Object.values(historyMap);
+
+  // Capacity Used Percentage
+  // Let's assume warehouse max capacity is 5000 units for demonstration or calculated as a percentage
+  const maxCapacity = 5000;
+  const capacityUsedPercentage = Math.min(Math.round((totalInventoryQuantity / maxCapacity) * 100), 100);
+
+  return {
+    totalProducts,
+    totalInventoryQuantity,
+    totalInventoryValue,
+    todayStockIn,
+    todayStockOut,
+    lowStockCount,
+    pendingRequests: 0,
+    capacityUsedPercentage,
+    recentMovements,
+    stockHistory,
+    zoneStorage,
+  };
+};
+

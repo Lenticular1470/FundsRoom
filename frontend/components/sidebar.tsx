@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   FileText,
   Settings,
+  AlertCircle,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { UserRole } from '@/lib/types'
@@ -45,10 +46,11 @@ const getNavItems = (role: UserRole): NavItem[] => {
     ],
     warehouse: [
       { icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard', href: '/dashboard/warehouse' },
-      { icon: <Package className="w-4 h-4" />, label: 'Inventory', href: '/dashboard/warehouse/inventory' },
-      { icon: <ShoppingCart className="w-4 h-4" />, label: 'Stock Movements', href: '/dashboard/warehouse/movements' },
+      { icon: <Package className="w-4 h-4" />, label: 'Products', href: '/dashboard/warehouse/products' },
+      { icon: <ShoppingCart className="w-4 h-4" />, label: 'Inventory', href: '/dashboard/warehouse/inventory' },
+      { icon: <AlertCircle className="w-4 h-4" />, label: 'Low Stock', href: '/dashboard/warehouse/low-stock' },
       { icon: <BarChart3 className="w-4 h-4" />, label: 'Reports', href: '/dashboard/warehouse/reports' },
-      { icon: <Settings className="w-4 h-4" />, label: 'Settings', href: '/dashboard/warehouse/settings' },
+      { icon: <User className="w-4 h-4" />, label: 'Profile', href: '/dashboard/warehouse/profile' },
     ],
     accounts: [
       { icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard', href: '/dashboard/accounts' },
