@@ -8,6 +8,7 @@ import { Package, AlertCircle, TrendingUp, TrendingDown, Plus, LogIn, LogOut, Lo
 import { WarehouseService, WarehouseStats } from '@/services/warehouse.service'
 import { ProductService } from '@/services/product.service'
 import { InventoryService } from '@/services/inventory.service'
+import WarehouseHeader from '@/components/warehouse-header'
 
 const COLORS = ['#d97706', '#b45309', '#92400e', '#fbbf24']
 
@@ -139,15 +140,7 @@ export default function WarehouseDashboard() {
 
   return (
     <div className="min-h-screen text-[#FAF7F2] font-sans">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Inventory & Stock Operations</h1>
-          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            Active Session
-          </span>
-        </div>
-      </div>
+      <WarehouseHeader title="Inventory & Stock Operations" />
 
       {/* Main Command Banner */}
       <motion.div

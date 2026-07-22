@@ -54,10 +54,9 @@ const getNavItems = (role: UserRole): NavItem[] => {
     ],
     accounts: [
       { icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard', href: '/dashboard/accounts' },
-      { icon: <FileText className="w-4 h-4" />, label: 'Invoices', href: '/dashboard/accounts/invoices' },
-      { icon: <Package className="w-4 h-4" />, label: 'Transactions', href: '/dashboard/accounts/transactions' },
-      { icon: <BarChart3 className="w-4 h-4" />, label: 'Reports', href: '/dashboard/accounts/reports' },
-      { icon: <Settings className="w-4 h-4" />, label: 'Settings', href: '/dashboard/accounts/settings' },
+      { icon: <FileSpreadsheet className="w-4 h-4" />, label: 'Sales Reports', href: '/dashboard/accounts/sales-reports' },
+      { icon: <BarChart3 className="w-4 h-4" />, label: 'Financial Reports', href: '/dashboard/accounts/financial-reports' },
+      { icon: <User className="w-4 h-4" />, label: 'Profile', href: '/dashboard/accounts/profile' },
     ],
   }
 
@@ -68,9 +67,114 @@ export default function Sidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
 
-  const currentUser = user || { name: 'advika', email: 'advika@fundsroom.com', role: 'sales' as UserRole }
-  const roleNavItems = getNavItems(currentUser.role)
+  const isWarehouseRoute = pathname.startsWith('/dashboard/warehouse')
+  const isAccountsRoute = pathname.startsWith('/dashboard/accounts')
+  const isDarkRoute = isWarehouseRoute || isAccountsRoute
 
+  const currentUser = user || {
+    name: isAccountsRoute ? 'rahala' : isWarehouseRoute ? 'bilibibili' : 'advika',
+    email: isAccountsRoute ? 'rahala@kk' : isWarehouseRoute ? 'bi@hji.com' : 'advika@fundsroom.com',
+    role: (isAccountsRoute ? 'accounts' : isWarehouseRoute ? 'warehouse' : 'sales') as UserRole
+  }
+  const activeRole = isAccountsRoute ? ('accounts' as UserRole) : isWarehouseRoute ? ('warehouse' as UserRole) : currentUser.role
+  const roleNavItems = getNavItems(activeRole)
+
+  if (isDarkRoute) {
+    return (
+      <motion.aside
+        initial={{ x: -256 }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="w-64 bg-[#070a11] border-r border-slate-800/80 h-screen fixed left-0 top-0 flex flex-col shadow-xl z-30 font-sans"
+      >
+        {/* Brand Header */}
+        <div className="p-5 border-b border-slate-800/70">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0092b8] to-[#00c994] flex items-center justify-center shadow-md shadow-[#0092b8]/20 text-white font-bold text-lg">
+              F
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold text-white tracking-tight leading-none">
+                FUNDSROOM
+              </h1>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-1">
+                ERP & CRM
+              </p>
+            </div>
+          </div>
+
+          {/* Role Badge Pill */}
+          <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              ROLE
+            </span>
+            <span className="px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[11px] font-extrabold tracking-wider uppercase">
+              {activeRole}
+            </span>
+          </div>
+        </div>
+
+        {/* Menu Section */}
+        <div className="px-5 pt-4 pb-2">
+          <span className="text-[10px] font-extrabold tracking-widest text-slate-500 uppercase">
+            {activeRole} MENU
+          </span>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
+          {roleNavItems.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/dashboard/warehouse' && pathname.startsWith(item.href))
+            return (
+              <motion.div key={item.href} whileHover={{ x: 3 }} whileTap={{ scale: 0.98 }}>
+                <Link
+                  href={item.href}
+                  className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    isActive
+                      ? 'bg-[#121a2a] text-white border border-[#0092b8]/40 shadow-sm shadow-[#0092b8]/20'
+                      : 'text-slate-400 hover:bg-[#0c121e] hover:text-slate-200'
+                  }`}
+                >
+                  <span className={isActive ? 'text-[#00a8d6]' : 'text-slate-500'}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </Link>
+              </motion.div>
+            )
+          })}
+        </nav>
+
+        {/* Footer User Info */}
+        <div className="p-4 border-t border-slate-800/70 bg-[#05070c] space-y-3">
+          <div className="flex items-center justify-between gap-2 bg-[#0b1019] p-2.5 rounded-xl border border-slate-800 shadow-xs">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-slate-800 text-amber-400 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-700">
+                {currentUser.name ? currentUser.name.charAt(0).toLowerCase() : 'b'}
+              </div>
+              <div className="truncate">
+                <p className="font-bold text-white text-xs truncate leading-tight">{currentUser.name || 'bilibibili'}</p>
+                <p className="text-[10px] text-slate-500 truncate">{currentUser.email || 'bi@hji.com'}</p>
+              </div>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={logout}
+              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-950/20 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </motion.button>
+          </div>
+        </div>
+      </motion.aside>
+    )
+  }
+
+  // Default Light Theme Sidebar for Sales/Admin/Accounts
   return (
     <motion.aside
       initial={{ x: -256 }}
@@ -118,6 +222,7 @@ export default function Sidebar() {
             pathname === item.href ||
             (item.href !== '/dashboard/admin' &&
               item.href !== '/dashboard/sales' &&
+              item.href !== '/dashboard/warehouse' &&
               pathname.startsWith(item.href))
           return (
             <motion.div key={item.href} whileHover={{ x: 3 }} whileTap={{ scale: 0.98 }}>

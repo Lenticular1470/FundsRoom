@@ -282,3 +282,98 @@ export const getWarehouseDashboardStatsService = async () => {
   };
 };
 
+export const getAccountsDashboardStatsService = async () => {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const [
+    confirmedChallans,
+    todayConfirmedChallans,
+    confirmedChallansCount,
+    cancelledChallansCount,
+    allCustomers,
+  ] = await Promise.all([
+    prisma.challan.findMany({
+      where: { status: "CONFIRMED" },
+      include: { items: true, customer: true },
+    }),
+    prisma.challan.findMany({
+      where: {
+        status: "CONFIRMED",
+        createdAt: { gte: startOfDay },
+      },
+      include: { items: true },
+    }),
+    prisma.challan.count({ where: { status: "CONFIRMED" } }),
+    prisma.challan.count({ where: { status: "CANCELLED" } }),
+    prisma.customer.findMany({
+      include: {
+        challans: {
+          where: { status: "CONFIRMED" },
+          include: { items: true },
+        },
+      },
+    }),
+  ]);
+
+  const totalConfirmedRevenue = confirmedChallans.reduce((acc, c) => {
+    return acc + c.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+  }, 0);
+
+  const todaysRevenue = todayConfirmedChallans.reduce((acc, c) => {
+    return acc + c.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+  }, 0);
+
+  // Top Billing Enterprise Clients
+  const clientBillingMap: Record<string, { name: string; businessName?: string | null; totalValue: number }> = {};
+
+  allCustomers.forEach((cust) => {
+    let totalValue = 0;
+    cust.challans.forEach((c) => {
+      totalValue += c.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+    });
+    if (totalValue > 0) {
+      clientBillingMap[cust.id] = {
+        name: cust.name,
+        businessName: cust.businessName || "Private Client",
+        totalValue,
+      };
+    }
+  });
+
+  const topBillingClients = Object.values(clientBillingMap)
+    .sort((a, b) => b.totalValue - a.totalValue)
+    .slice(0, 5);
+
+  // Revenue & Financial Growth Trend (Monthly grouping for past 6 months)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const trendMap: Record<string, { month: string; revenue: number }> = {};
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    trendMap[key] = { month: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, revenue: 0 };
+  }
+
+  confirmedChallans.forEach((c) => {
+    if (!c.createdAt) return;
+    const d = new Date(c.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (trendMap[key]) {
+      const total = c.items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+      trendMap[key].revenue += total;
+    }
+  });
+
+  const revenueTrend = Object.values(trendMap);
+
+  return {
+    totalConfirmedRevenue,
+    todaysRevenue,
+    confirmedChallansCount,
+    cancelledChallansCount,
+    topBillingClients,
+    revenueTrend,
+  };
+};
+
