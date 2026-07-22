@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   ResponsiveContainer,
   LineChart,
@@ -21,17 +21,16 @@ import {
   Calendar,
   Clock,
   Plus,
-  Search,
-  Bell,
-  CheckCircle2,
-  CalendarDays,
   ArrowUpRight,
   Loader2,
   AlertCircle,
-  RefreshCw,
+  FileSpreadsheet,
+  BarChart3,
+  CheckCircle2,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import axiosClient from '@/lib/axiosClient'
+import SalesHeader from '@/components/sales-header'
 
 interface DashboardData {
   todaysSales: number
@@ -104,372 +103,289 @@ export default function SalesDashboard() {
   return (
     <div className="space-y-6">
       {/* Top Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
-              Sales & Client Relationship Hub
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Active Session
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time analytics and customer interaction portal
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Search Input */}
-          <div className="relative w-64 md:w-80">
-            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search records, customer, phone..."
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-900/90 border border-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            />
-          </div>
-
-          {/* Refresh Button */}
-          <button
-            onClick={fetchDashboardData}
-            disabled={loading}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-colors"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-
-          {/* Notifications Icon with Badge */}
-          <div className="relative">
-            <button
-              onClick={() => router.push('/dashboard/sales/orders')}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-colors relative"
-            >
-              <Bell className="w-4 h-4" />
-              {data && data.notificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-[10px] font-bold text-slate-950 rounded-full flex items-center justify-center">
-                  {data.notificationsCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Logged in User Badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center">
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <span className="text-xs font-semibold text-slate-200 truncate max-w-[100px]">
-              {user?.name || 'Sales User'}
-            </span>
-          </div>
-        </div>
-      </div>
+      <SalesHeader
+        title="Sales & Client Relationship Hub"
+        subtitle="Real-time analytics, customer database & sales challans"
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onRefresh={fetchDashboardData}
+        loading={loading}
+      />
 
       {/* Hero Workspace Banner */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl p-6 bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-900/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4"
+        transition={{ duration: 0.4 }}
+        className="rounded-3xl p-7 bg-white border border-[#E8DFC9] shadow-sm relative overflow-hidden"
       >
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h2 className="text-2xl font-bold text-white">Sales & Client Workspace</h2>
-            <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Emerald Theme
-            </span>
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-gradient-to-br from-yellow-200/40 to-amber-300/30 blur-2xl pointer-events-none" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div>
+            <div className="flex items-center gap-2.5 mb-2">
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Sales & Client Workspace
+              </h2>
+              <span className="px-3 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                Warm Yellow Theme
+              </span>
+            </div>
+            <p className="text-xs md:text-sm text-slate-600 font-medium max-w-2xl">
+              Convert leads into active clients, maintain customer relations, and issue delivery challans backed by real database metrics.
+            </p>
           </div>
-          <p className="text-sm text-slate-300">
-            Convert leads, maintain customer relations, and generate sales challans seamlessly.
-          </p>
-        </div>
 
-        <button
-          onClick={() => router.push('/dashboard/sales/customers?action=new')}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold text-sm shadow-lg shadow-emerald-900/30 transition-all flex items-center gap-2 shrink-0 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Customer</span>
-        </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push('/dashboard/sales/customers')}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-400/25 transition-all flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Customer</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push('/dashboard/sales/challans')}
+              className="px-4 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-amber-100/60 border border-[#E0D5BE] text-slate-800 font-bold text-xs shadow-2xs transition-all flex items-center gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-amber-700" />
+              <span>Create Challan</span>
+            </motion.button>
+          </div>
+        </div>
       </motion.div>
 
       {/* Error Alert */}
       {error && (
-        <div className="rounded-xl bg-red-950/40 border border-red-800/60 p-4 text-xs text-red-200 flex items-center gap-3">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-center gap-3"
+        >
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
           <span>{error}</span>
-        </div>
+        </motion.div>
       )}
 
-      {/* 6 Stat Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {/* 1. Today's Sales */}
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Today's Sales */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-md flex flex-col justify-between"
+          transition={{ duration: 0.4, delay: 0.1 }}
+          whileHover={{ y: -3 }}
+          className="p-5 rounded-2xl bg-white border border-[#E8DFC9] shadow-xs relative overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-              Today's Sales
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Today's Confirmed Sales
             </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <DollarSign className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-xs">
+              <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : formatCurrency(data?.todaysSales || 0)}
+          <div className="mt-4">
+            <h3 className="text-2xl font-black text-slate-900">
+              {loading ? <Loader2 className="w-6 h-6 animate-spin text-amber-500" /> : formatCurrency(data?.todaysSales || 0)}
             </h3>
-            <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Live Sync
+            <p className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Live DB calculation</span>
             </p>
           </div>
         </motion.div>
 
-        {/* 2. Monthly Sales */}
+        {/* Monthly Sales */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-md flex flex-col justify-between"
+          transition={{ duration: 0.4, delay: 0.15 }}
+          whileHover={{ y: -3 }}
+          className="p-5 rounded-2xl bg-white border border-[#E8DFC9] shadow-xs relative overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-              Monthly Sales
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Monthly Revenue
             </span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-xl bg-yellow-100 text-yellow-800 flex items-center justify-center shadow-xs">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : formatCurrency(data?.monthlySales || 0)}
+          <div className="mt-4">
+            <h3 className="text-2xl font-black text-slate-900">
+              {loading ? <Loader2 className="w-6 h-6 animate-spin text-amber-500" /> : formatCurrency(data?.monthlySales || 0)}
             </h3>
-            <p className="text-[10px] text-blue-400 mt-1 flex items-center gap-1">
-              <ArrowUpRight className="w-3 h-3" /> Confirmed
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              MTD Confirmed Orders
             </p>
           </div>
         </motion.div>
 
-        {/* 3. Today's Leads */}
+        {/* Active Clients */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-md flex flex-col justify-between"
+          transition={{ duration: 0.4, delay: 0.2 }}
+          whileHover={{ y: -3 }}
+          className="p-5 rounded-2xl bg-white border border-[#E8DFC9] shadow-xs relative overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-              Today's Leads
-            </span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400">
-              <UserPlus className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : data?.todaysLeads ?? 0}
-            </h3>
-            <p className="text-[10px] text-teal-400 mt-1">New customer prospects</p>
-          </div>
-        </motion.div>
-
-        {/* 4. Active Clients */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-md flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Active Clients
             </span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400">
-              <Users className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shadow-xs border border-amber-200">
+              <Users className="w-5 h-5" />
             </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : data?.activeClients ?? 0}
+          <div className="mt-4">
+            <h3 className="text-2xl font-black text-slate-900">
+              {loading ? <Loader2 className="w-6 h-6 animate-spin text-amber-500" /> : (data?.activeClients || 0)}
             </h3>
-            <p className="text-[10px] text-sky-400 mt-1">Total active accounts</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              Active database records
+            </p>
           </div>
         </motion.div>
 
-        {/* 5. Follow-ups */}
+        {/* Pending Challans */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-md flex flex-col justify-between"
+          transition={{ duration: 0.4, delay: 0.25 }}
+          whileHover={{ y: -3 }}
+          className="p-5 rounded-2xl bg-white border border-[#E8DFC9] shadow-xs relative overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-              Follow-ups
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Draft Challans
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-              <Calendar className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-xl bg-yellow-400/20 text-yellow-900 flex items-center justify-center shadow-xs">
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : data?.followUpsCount ?? 0}
+          <div className="mt-4">
+            <h3 className="text-2xl font-black text-slate-900">
+              {loading ? <Loader2 className="w-6 h-6 animate-spin text-amber-500" /> : (data?.pendingChallans || 0)}
             </h3>
-            <p className="text-[10px] text-amber-400 mt-1">Scheduled calls/meetings</p>
-          </div>
-        </motion.div>
-
-        {/* 6. Pending Challans */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-md flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-              Pending Challans
-            </span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : data?.pendingChallans ?? 0}
-            </h3>
-            <p className="text-[10px] text-rose-400 mt-1">Draft orders pending</p>
+            <p className="text-[11px] text-amber-700 font-semibold mt-1">
+              Awaiting confirmation
+            </p>
           </div>
         </motion.div>
       </div>
 
-      {/* Main Grid: Charts & Upcoming Followups */}
+      {/* Main Content Section: Sales Trend Chart & Upcoming Follow-ups */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sales Performance Trend Line Chart */}
+        {/* Sales Trend Chart (2 Cols) */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="lg:col-span-2 bg-slate-900/90 rounded-2xl p-6 border border-slate-800/80 shadow-lg flex flex-col justify-between"
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="lg:col-span-2 bg-white rounded-3xl p-6 border border-[#E8DFC9] shadow-xs flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#F0E8DD]">
             <div>
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
-                Sales Performance Trend
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Monthly revenue closed over recent billing periods
-              </p>
+              <h3 className="text-base font-extrabold text-slate-900">Sales Trend Performance</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Monthly revenue overview over recent period</p>
             </div>
-
-            <div className="flex items-center gap-2 text-xs">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
-              <span className="text-slate-300 font-medium">Sales Closed (₹)</span>
-            </div>
+            <span className="px-3 py-1 bg-amber-100 text-amber-900 text-xs font-bold rounded-full border border-amber-300">
+              Live Chart
+            </span>
           </div>
 
-          <div className="h-[300px] w-full">
+          <div className="h-64 w-full">
             {loading ? (
-              <div className="h-full flex items-center justify-center text-slate-500">
-                <Loader2 className="w-8 h-8 animate-spin" />
+              <div className="h-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
               </div>
-            ) : data?.salesTrend && data.salesTrend.length > 0 ? (
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.salesTrend} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="label" stroke="#64748b" tick={{ fontSize: 12 }} />
-                  <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                <LineChart data={data?.salesTrend || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F0E8DD" />
+                  <XAxis dataKey="label" stroke="#64748B" fontSize={12} />
+                  <YAxis stroke="#64748B" fontSize={12} tickFormatter={(val) => `₹${val / 1000}k`} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderColor: '#334155',
-                      borderRadius: '12px',
-                      color: '#f8fafc',
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#E8DFC9',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
                     }}
-                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
                   />
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#10b981"
+                    name="Revenue (₹)"
+                    stroke="#F59E0B"
                     strokeWidth={3}
-                    dot={{ fill: '#10b981', r: 5 }}
+                    dot={{ fill: '#F59E0B', r: 5 }}
                     activeDot={{ r: 7 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm">
-                <CalendarDays className="w-10 h-10 mb-2 opacity-50" />
-                <span>No historical sales data recorded yet.</span>
-              </div>
             )}
           </div>
         </motion.div>
 
-        {/* Upcoming Follow-ups Panel */}
+        {/* Upcoming Follow-ups List (1 Col) */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800/80 shadow-lg flex flex-col"
+          transition={{ duration: 0.4, delay: 0.35 }}
+          className="bg-white rounded-3xl p-6 border border-[#E8DFC9] shadow-xs flex flex-col"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-amber-400" />
-              Upcoming Follow-ups
-            </h3>
+          <div className="flex items-center justify-between pb-3 border-b border-[#F0E8DD]">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Upcoming Follow-ups</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Key scheduled client interactions</p>
+            </div>
             <button
               onClick={() => router.push('/dashboard/sales/customers')}
-              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="text-xs font-bold text-amber-700 hover:text-amber-900 underline"
             >
               View All
             </button>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto max-h-[320px] pr-1">
+          <div className="mt-4 space-y-3 flex-1 overflow-y-auto max-h-[280px]">
             {loading ? (
-              <div className="py-12 flex justify-center text-slate-500">
-                <Loader2 className="w-6 h-6 animate-spin" />
+              <div className="py-8 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
               </div>
             ) : filteredFollowUps && filteredFollowUps.length > 0 ? (
               filteredFollowUps.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-all flex items-center justify-between group"
+                  className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EFE7DB] hover:border-amber-300 transition-all flex items-center justify-between gap-3"
                 >
-                  <div className="min-w-0 pr-2">
-                    <h4 className="text-sm font-semibold text-white truncate group-hover:text-emerald-400 transition-colors">
-                      {item.name}
-                    </h4>
-                    <p className="text-xs text-slate-400 truncate">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">{item.name}</h4>
+                    <p className="text-[11px] text-slate-500 truncate max-w-[150px]">
                       {item.businessName || item.phone}
                     </p>
+                    <p className="text-[10px] text-amber-700 font-semibold mt-1">
+                      Date: {new Date(item.followUpDate).toLocaleDateString('en-IN')}
+                    </p>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      {new Date(item.followUpDate).toLocaleDateString('en-GB')}
-                    </span>
-                    <button
-                      onClick={() => router.push(`/dashboard/sales/customers?id=${item.id}`)}
-                      className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    >
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                    item.status === 'ACTIVE'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-yellow-100 text-yellow-900'
+                  }`}>
+                    {item.status}
+                  </span>
                 </div>
               ))
             ) : (
-              <div className="py-12 text-center text-slate-500 text-xs">
-                No upcoming follow-ups scheduled.
+              <div className="py-8 text-center text-xs text-slate-400">
+                No upcoming follow-ups found.
               </div>
             )}
           </div>

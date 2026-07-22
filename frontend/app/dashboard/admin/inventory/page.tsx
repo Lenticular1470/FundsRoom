@@ -244,7 +244,7 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 text-sm font-semibold text-foreground">{log.quantity}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{log.reason}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{log.createdBy}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(log.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(log.createdAt).toLocaleDateString('en-IN')}</td>
                     <td className="px-6 py-4 text-sm">
                       <motion.button
                         whileHover={{ scale: 1.1 }}

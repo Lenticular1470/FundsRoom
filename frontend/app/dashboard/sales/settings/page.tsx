@@ -58,7 +58,7 @@ interface ProfileData {
 }
 
 export default function ProfileSettingsPage() {
-  const { user: authUser, setUser } = useAuth() as any
+  const { user: authUser, updateUser } = useAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showPw, setShowPw] = useState(false)
@@ -104,8 +104,8 @@ export default function ProfileSettingsPage() {
       const res = await axiosClient.put('/profile', data)
       const updated = res.data?.data || res.data
       setProfile(updated)
-      // Update auth context user if the method exists
-      if (setUser) setUser((prev: any) => ({ ...prev, name: updated.name, email: updated.email }))
+      // Sync auth context so sidebar/header reflects new name
+      updateUser({ name: updated.name, email: updated.email })
       showToast('success', 'Profile updated successfully!')
     } catch (err: any) {
       showToast('error', err.message || 'Failed to update profile.')

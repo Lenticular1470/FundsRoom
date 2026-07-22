@@ -161,7 +161,7 @@ export default function ChallanPage() {
                       {challan.status.charAt(0).toUpperCase() + challan.status.slice(1).toLowerCase()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(challan.dueDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(challan.dueDate).toLocaleDateString('en-IN')}</td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex items-center space-x-2">
                       <motion.button
@@ -231,7 +231,7 @@ export default function ChallanPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Due Date</p>
-                  <p className="font-medium text-foreground">{new Date(selectedChallan.dueDate).toLocaleDateString()}</p>
+                  <p className="font-medium text-foreground">{new Date(selectedChallan.dueDate).toLocaleDateString('en-IN')}</p>
                 </div>
               </div>
             ) : (

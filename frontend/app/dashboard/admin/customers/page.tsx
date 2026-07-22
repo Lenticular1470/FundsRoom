@@ -145,7 +145,7 @@ export default function CustomersPage() {
                     <td className="px-6 py-4 text-sm text-foreground">{customer.company}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{customer.phone}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{customer.city}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(customer.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(customer.createdAt).toLocaleDateString('en-IN')}</td>
                     <td className="px-6 py-4 text-sm">
                       <div className="flex items-center space-x-2">
                         <motion.button

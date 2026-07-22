@@ -70,6 +70,8 @@ export interface Challan {
   updatedAt?: string
 }
 
+export type SalesChallan = Challan
+
 export interface InventoryLog {
   id: string
   productId: string
@@ -82,13 +84,27 @@ export interface InventoryLog {
 }
 
 export interface ReportData {
-  todaysSales: number
-  monthlyRevenue: number
-  totalCustomers: number
-  pendingChallans: number
-  completedChallans: number
-  topCustomers: Array<{ name: string; businessName?: string | null; orders: number; totalValue: number }>
-  productDistribution: Array<{ category: string; revenue: number; quantity: number }>
-  salesTrend: Array<{ month: string; revenue: number; orders: number }>
+  summary?: {
+    totalRevenue: number
+    totalOrders: number
+    activeCustomers: number
+    avgOrderValue: number
+  }
+  todaysSales?: number
+  monthlyRevenue?: number
+  totalCustomers?: number
+  pendingChallans?: number
+  completedChallans?: number
+  topCustomers?: Array<{
+    name: string
+    businessName?: string | null
+    orders?: number
+    totalValue?: number
+    ordersCount?: number
+    totalSpent?: number
+  }>
+  productDistribution?: Array<{ category: string; revenue: number; quantity: number }>
+  salesTrend?: Array<{ month: string; revenue: number; orders: number }>
 }
+
 

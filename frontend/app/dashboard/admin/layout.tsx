@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import Sidebar from '@/components/sidebar'
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   const router = useRouter()
 
