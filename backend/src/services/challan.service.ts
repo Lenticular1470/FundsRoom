@@ -18,7 +18,49 @@ export const getChallanByIdService = async (id: string) => {
   return challan;
 };
 
-export const createChallanService = async (payload: any) => createChallanRepo(payload);
+// Generate a unique challan number like SCH-2026-001
+const generateChallanNumber = async (): Promise<string> => {
+  const year = new Date().getFullYear();
+  const count = await prisma.challan.count();
+  const seq = String(count + 1).padStart(3, "0");
+  return `SCH-${year}-${seq}`;
+};
+
+export const createChallanService = async (payload: any) => {
+  // Auto-generate challanNumber if not provided
+  const challanNumber = payload.challanNumber || (await generateChallanNumber());
+
+  // Enrich each item with product details from DB (productName, sku, category, price)
+  const enrichedItems = await Promise.all(
+    (payload.items || []).map(async (item: any) => {
+      // If productName already provided, use it as-is
+      if (item.productName && item.sku && item.price != null) {
+        return item;
+      }
+      // Otherwise look up product by productId
+      if (item.productId) {
+        const product = await prisma.product.findUnique({ where: { id: item.productId } });
+        if (!product) {
+          const err = new Error(`Product not found: ${item.productId}`) as any;
+          err.status = 404;
+          throw err;
+        }
+        return {
+          productId: product.id,
+          productName: product.name,
+          sku: product.sku,
+          category: product.category || "General",
+          price: Number(product.price),
+          quantity: item.quantity || 1,
+        };
+      }
+      // Fallback: use provided data
+      return item;
+    })
+  );
+
+  return createChallanRepo({ ...payload, challanNumber, items: enrichedItems });
+};
 
 export const updateChallanService = async (id: string, payload: any) => {
   const challan = await findChallan(id);
