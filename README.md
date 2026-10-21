@@ -40,8 +40,8 @@ A full-stack Mini ERP + CRM Operations Portal built for wholesale and distributi
 
 ## Tech Stack
 
-- Backend: Node.js, Express.js, TypeScript, Prisma ORM, SQLite / PostgreSQL, JWT, bcrypt
-- Frontend: React 18, Vite, TypeScript, Lucide Icons, Modern CSS
+- Backend: Node.js, Express.js, TypeScript, Prisma ORM, PostgreSQL, JWT, bcrypt
+- Frontend: Next.js 16, React 19, TypeScript, Lucide Icons
 - DevOps: Docker-ready architecture, Docker Compose guidance
 
 ## Repository Structure
@@ -81,17 +81,13 @@ cd ../frontend
 pnpm install
 ```
 
-### Step 2: Initialize Database & Seed Demo Data
+### Step 2: Configure the PostgreSQL Database
 
-```bash
-cd ../backend
-npx prisma db push
-npm run prisma:seed
-```
+Configure `DATABASE_URL` and `DIRECT_URL` in the backend environment for the existing PostgreSQL/Supabase database. This repository currently has no checked-in Prisma migration history; do not run `prisma db push` against an existing or production database. Create and review a migration before applying any schema changes. Seed only a disposable, empty development database.
 
 ### Step 3: Run Development Servers
 
-Terminal 1: Backend Server (http://localhost:5000)
+Terminal 1: Backend Server (http://localhost:4000)
 ```bash
 cd backend
 npm run dev
@@ -127,8 +123,9 @@ All accounts share the default password: `password123`
 - `POST /api/products` - Create product
 - `POST /api/products/:id/stock` - Manual stock movement IN/OUT
 - `GET /api/products/stock-logs/all` - Stock audit logs
-- `POST /api/challans` - Create Draft or Confirmed Sales Challan
-- `PUT /api/challans/:id/status` - Update status to CONFIRMED or CANCELLED
+- `POST /api/challans` - Create a draft sales challan
+- `POST /api/challans/:id/confirm` - Confirm a draft and atomically deduct stock
+- `POST /api/challans/:id/cancel` - Cancel a draft challan
 
 ## Deployment Instructions
 
@@ -152,25 +149,27 @@ Connect your GitHub repository to Render, Railway, or Fly.io.
 - Build Command: `npm install && npm run build`
 - Start Command: `npm start`
 - Environment Variables:
-  - `PORT=5000`
+  - `PORT` (the configured local default is `4000`; use the hosting provider's assigned port when required)
   - `DATABASE_URL=<your-postgres-uri>`
+  - `DIRECT_URL=<your-direct-postgres-uri>`
   - `JWT_SECRET=<your-production-secret-key>`
+  - `JWT_EXPIRES_IN=1d`
+  - `CORS_ORIGINS=<comma-separated-approved-frontend-origins>`
 
 ### Frontend
 
 Deploy the frontend to Vercel, Netlify, or Render Static.
 
 - Root Directory: `frontend`
-- Framework Preset: Vite
+- Framework Preset: Next.js
 - Build Command: `pnpm build`
-- Output Directory: `dist`
-- Set `VITE_API_URL` to your deployed backend URL
+- Set `NEXT_PUBLIC_API_BASE_URL` to the deployed backend origin (without the `/api` suffix)
 
 ## Architecture & Design Overview
 
                                  ┌─────────────────────────────────┐
-                                 │       React + Vite Frontend     │
-                                 │ (TypeScript, Lucide Icons, CSS) │
+                                 │       Next.js Frontend          │
+                                 │  (React, TypeScript, Lucide)    │
                                  └────────────────┬────────────────┘
                                                   │ REST APIs / JWT Bearer
                                                   ▼

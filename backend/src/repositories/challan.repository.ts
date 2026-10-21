@@ -19,10 +19,22 @@ export const createChallan = async (payload: any) =>
         }))
       }
     },
-    include: { items: true }
+    include: { items: true, customer: true }
   });
 
-export const findChallans = async (options: { search?: string; skip: number; take: number }) => {
+export const findChallans = async (options: {
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  category?: string;
+  warehouse?: string;
+  status?: "DRAFT" | "CONFIRMED" | "CANCELLED";
+  skip: number;
+  take: number;
+}) => {
+  const createdAt: { gte?: Date; lte?: Date } = {};
+  if (options.dateFrom) createdAt.gte = new Date(`${options.dateFrom}T00:00:00.000Z`);
+  if (options.dateTo) createdAt.lte = new Date(`${options.dateTo}T23:59:59.999Z`);
   const filter = options.search
     ? {
         OR: [
@@ -30,23 +42,46 @@ export const findChallans = async (options: { search?: string; skip: number; tak
           { customer: { name: { contains: options.search, mode: "insensitive" as Prisma.QueryMode } } }
         ]
       }
-    : undefined;
+    : {};
+  const itemFilter: Prisma.ChallanItemWhereInput | undefined =
+    options.category || options.warehouse
+      ? {
+          ...(options.category ? { category: { equals: options.category, mode: "insensitive" } } : {}),
+          ...(options.warehouse
+            ? { product: { is: { warehouse: { equals: options.warehouse, mode: "insensitive" } } } }
+            : {}),
+        }
+      : undefined;
+  const where: Prisma.ChallanWhereInput = {
+    ...filter,
+    ...(options.status ? { status: options.status } : {}),
+    ...(Object.keys(createdAt).length ? { createdAt } : {}),
+    ...(itemFilter ? { items: { some: itemFilter } } : {}),
+  };
 
   const items = await prisma.challan.findMany({
-    where: filter,
+    where,
     skip: options.skip,
     take: options.take,
     orderBy: { createdAt: "desc" },
-    include: { items: true, customer: true, createdBy: true }
+    include: {
+      items: itemFilter ? { where: itemFilter } : true,
+      customer: true,
+      createdBy: true,
+    }
   });
-  const total = await prisma.challan.count({ where: filter });
-  return { items, total, page: Math.floor(options.skip / options.take) + 1, limit: options.take };
+  const total = await prisma.challan.count({ where });
+  return {
+    items,
+    total,
+    page: Math.floor(options.skip / options.take) + 1,
+    limit: options.take,
+    totalPages: Math.ceil(total / options.take) || 1,
+  };
 };
 
 export const findChallan = async (id: string) =>
   prisma.challan.findUnique({ where: { id }, include: { items: true, customer: true, createdBy: true } });
 
-export const updateChallan = async (id: string, payload: any) =>
-  prisma.challan.update({ where: { id }, data: payload, include: { items: true, customer: true, createdBy: true } });
-
-export const deleteChallan = async (id: string) => prisma.challan.delete({ where: { id } });
+export const deleteChallan = async (id: string) =>
+  prisma.challan.deleteMany({ where: { id, status: "DRAFT" } });

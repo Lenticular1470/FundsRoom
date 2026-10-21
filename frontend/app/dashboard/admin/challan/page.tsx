@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import DashboardHeader from '@/components/dashboard-header'
 import { motion } from 'framer-motion'
 import { SalesChallan } from '@/lib/types'
-import { Plus, Search, Eye, Trash2, Printer, Loader2 } from 'lucide-react'
+import { Plus, Search, Eye, Trash2, Printer, Loader2, CheckCircle2 } from 'lucide-react'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import axiosClient from '@/lib/axiosClient'
@@ -13,6 +13,7 @@ interface ChallansApiResult {
   items: Array<{
     id: string
     challanNumber: string
+    customerId: string
     customer?: { name: string }
     items: Array<{
       productId: string | null
@@ -31,8 +32,15 @@ interface ChallansApiResult {
   limit: number
 }
 
-const mapChallan = (challan: any): SalesChallan => {
-  const items = (challan.items || []).map((item: any) => ({
+interface ChallanView extends Omit<SalesChallan, 'customer' | 'createdBy'> {
+  customerName: string
+  totalAmount: number
+  dueDate: string
+  createdBy: string
+}
+
+const mapChallan = (challan: ChallansApiResult['items'][number]): ChallanView => {
+  const items = (challan.items || []).map((item) => ({
     productId: item.productId,
     productName: item.productName,
     sku: item.sku,
@@ -44,10 +52,11 @@ const mapChallan = (challan: any): SalesChallan => {
   return {
     id: challan.id,
     challanNumber: challan.challanNumber,
+    customerId: challan.customerId,
     customerName: challan.customer?.name || 'Unknown Customer',
     items,
-    totalAmount: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    status: challan.status,
+    totalAmount: items.reduce((sum: number, item) => sum + item.price * item.quantity, 0),
+    status: challan.status || 'DRAFT',
     dueDate: challan.createdAt,
     createdAt: challan.createdAt,
     createdBy: challan.createdBy?.name || 'System',
@@ -56,12 +65,13 @@ const mapChallan = (challan: any): SalesChallan => {
 
 export default function ChallanPage() {
   const { token } = useAuth()
-  const [challans, setChallans] = useState<SalesChallan[]>([])
+  const authToken = token ?? undefined
+  const [challans, setChallans] = useState<ChallanView[]>([])
   const [customersList, setCustomersList] = useState<any[]>([])
   const [productsList, setProductsList] = useState<any[]>([])
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedChallan, setSelectedChallan] = useState<SalesChallan | null>(null)
+  const [selectedChallan, setSelectedChallan] = useState<ChallanView | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -71,16 +81,15 @@ export default function ChallanPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
   const [quantity, setQuantity] = useState('1')
-  const [challanStatus, setChallanStatus] = useState<'DRAFT' | 'CONFIRMED'>('CONFIRMED')
 
   const loadData = async () => {
     setLoading(true)
     setError(null)
     try {
       const [challanData, custData, prodData] = await Promise.all([
-        apiGet<ChallansApiResult>('/challans', token),
-        apiGet<any>('/customers?limit=100', token),
-        apiGet<any>('/products?limit=100', token),
+        apiGet<ChallansApiResult>('/challans', authToken),
+        apiGet<any>('/customers?limit=100', authToken),
+        apiGet<any>('/products?limit=100', authToken),
       ])
       setChallans(challanData.items.map(mapChallan))
       setCustomersList(custData.items || [])
@@ -111,7 +120,6 @@ export default function ChallanPage() {
         '/challans',
         {
           customerId: selectedCustomerId,
-          status: challanStatus,
           items: [
             {
               productId: chosenProduct.id,
@@ -119,7 +127,7 @@ export default function ChallanPage() {
             },
           ],
         },
-        token
+        authToken
       )
       setShowModal(false)
       setSelectedCustomerId('')
@@ -143,7 +151,16 @@ export default function ChallanPage() {
     }
   }
 
-  const handlePrint = (challan: SalesChallan) => {
+  const handleConfirm = async (id: string) => {
+    try {
+      await apiPost(`/challans/${id}/confirm`, {}, authToken)
+      await loadData()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to confirm challan.')
+    }
+  }
+
+  const handlePrint = (challan: ChallanView) => {
     setSelectedChallan(challan)
     setTimeout(() => {
       window.print()
@@ -274,13 +291,26 @@ export default function ChallanPage() {
                         >
                           <Printer className="w-4 h-4" />
                         </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          onClick={() => handleDelete(challan.id)}
-                          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-600 dark:text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
+                        {challan.status === 'DRAFT' && (
+                          <>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              onClick={() => handleConfirm(challan.id)}
+                              className="p-2 hover:bg-green-500/10 rounded-lg transition-colors text-green-600 dark:text-green-400"
+                              title="Confirm and deduct inventory"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              onClick={() => handleDelete(challan.id)}
+                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-600 dark:text-red-400"
+                              title="Delete draft"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </motion.button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </motion.tr>
@@ -383,17 +413,7 @@ export default function ChallanPage() {
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-[#0e0c09] text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label>
-                    <select
-                      value={challanStatus}
-                      onChange={(e) => setChallanStatus(e.target.value as 'DRAFT' | 'CONFIRMED')}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-800 bg-[#0e0c09] text-white focus:outline-none focus:border-amber-500 text-sm"
-                    >
-                      <option value="CONFIRMED">CONFIRMED</option>
-                      <option value="DRAFT">DRAFT</option>
-                    </select>
-                  </div>
+                  <p className="col-span-2 text-xs text-slate-400">New challans are saved as drafts. Confirming one checks and deducts stock atomically.</p>
                 </div>
 
                 <div className="flex space-x-3 pt-2">

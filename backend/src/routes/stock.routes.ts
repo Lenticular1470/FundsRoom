@@ -2,6 +2,7 @@
 import { createStockMovementSchema } from "../validators/stock.validator";
 import { validate } from "../middlewares/validate.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 import { createStockMovement, listStockMovements } from "../controllers/stock.controller";
 
 /**
@@ -35,7 +36,7 @@ import { createStockMovement, listStockMovements } from "../controllers/stock.co
 
 const router = Router();
 
-router.get("/", authMiddleware, listStockMovements);
-router.post("/", authMiddleware, validate(createStockMovementSchema), createStockMovement);
+router.get("/", authMiddleware, requireRole(["ADMIN", "SALES", "WAREHOUSE", "ACCOUNTS"]), listStockMovements);
+router.post("/", authMiddleware, requireRole(["ADMIN", "WAREHOUSE"]), validate(createStockMovementSchema), createStockMovement);
 
 export default router;

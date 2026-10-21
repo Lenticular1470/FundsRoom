@@ -1,25 +1,33 @@
 ﻿import { z } from "zod";
 
 const itemSchema = z.object({
-  productId: z.string().uuid().optional(),
-  productName: z.string().min(1),
-  sku: z.string().min(1),
-  category: z.string().min(1),
-  price: z.number().nonnegative(),
-  quantity: z.number().int().positive()
-});
+  productId: z.string().uuid(),
+  quantity: z.number().int().positive(),
+}).strict();
 
 export const createChallanSchema = z.object({
   body: z.object({
     customerId: z.string().uuid(),
-    items: z.array(itemSchema).min(1)
-  })
+    items: z.array(itemSchema).min(1),
+  }).strict(),
 });
 
-export const updateChallanSchema = z.object({
-  body: z.object({
-    status: z.enum(["DRAFT", "CONFIRMED", "CANCELLED"]).optional()
-  })
-});
+export const confirmChallanSchema = z.object({ body: z.object({}).optional() });
 
-export const confirmChallanSchema = z.object({ body: z.object({}) });
+const reportDate = z.string().optional().refine(
+  (value) => value === undefined || /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`)),
+  "Date must use YYYY-MM-DD format",
+);
+
+export const challanListSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    search: z.string().optional(),
+    dateFrom: reportDate,
+    dateTo: reportDate,
+    category: z.string().optional(),
+    warehouse: z.string().optional(),
+    status: z.enum(["DRAFT", "CONFIRMED", "CANCELLED"]).optional(),
+  }),
+});

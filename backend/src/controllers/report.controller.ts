@@ -4,7 +4,7 @@ import { getReportsService, getInventoryReportService, getMovementsReportService
 
 export const getReports = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await getReportsService();
+    const data = await getReportsService(req.query);
     return successResponse(res, "Reports fetched successfully.", data);
   } catch (error) {
     return next(error);

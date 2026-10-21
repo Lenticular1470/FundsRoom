@@ -28,7 +28,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
 
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await createProductService(req.body);
+    const data = await createProductService({ ...req.body, createdById: req.user?.id });
     return successResponse(res, "Product created successfully.", data, 201);
   } catch (error) {
     return next(error);

@@ -6,10 +6,23 @@ import apiRouter from "./routes/index";
 import { successResponse } from "./utils/response";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
+import { env } from "./config/env";
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = new Set([
+  ...((process.env.NODE_ENV === "production") ? [] : ["http://localhost:3000"]),
+  ...env.corsOrigins,
+]);
+
+app.use(cors({
+  origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+    if (!origin || process.env.NODE_ENV !== "production" || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+}));
 app.use(express.json());
 app.use(loggerMiddleware);
 
@@ -24,4 +37,3 @@ app.get("/health", (req, res) => successResponse(res, "OK", { uptime: process.up
 app.use(errorHandler);
 
 export default app;
-

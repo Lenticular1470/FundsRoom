@@ -1,6 +1,7 @@
 import axios from "axios"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "http://localhost:4000"
+const DEFAULT_API_BASE = "http://localhost:4000"
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? DEFAULT_API_BASE
 const AUTH_STORAGE_KEY = "fundsroom_auth"
 
 export const axiosClient = axios.create({
@@ -54,4 +55,3 @@ axiosClient.interceptors.response.use(
 )
 
 export default axiosClient
-

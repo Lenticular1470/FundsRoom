@@ -1,18 +1,19 @@
 ﻿import { Router } from "express";
 import {
   confirmChallanSchema,
+  challanListSchema,
   createChallanSchema,
-  updateChallanSchema
 } from "../validators/challan.validator";
 import { validate } from "../middlewares/validate.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 import {
   confirmChallan,
   createChallan,
+  cancelChallan,
   deleteChallan,
   getChallanById,
   getChallans,
-  updateChallan
 } from "../controllers/challan.controller";
 
 /**
@@ -59,44 +60,6 @@ import {
  *     responses:
  *       "200":
  *         $ref: '#/components/schemas/SuccessResponse'
- *   put:
- *     security:
- *       - bearerAuth: []
- *     tags:
- *       - Challans
- *     summary: Update challan
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Challan'
- *     responses:
- *       "200":
- *         $ref: '#/components/schemas/SuccessResponse'
- *   post:
- *     summary: Confirm challan
- *     description: Confirm challan and apply stock adjustments
- *     security:
- *       - bearerAuth: []
- *     tags:
- *       - Challans
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *     responses:
- *       "200":
- *         $ref: '#/components/schemas/SuccessResponse'
  *   delete:
  *     security:
  *       - bearerAuth: []
@@ -111,15 +74,44 @@ import {
  *     responses:
  *       "200":
  *         $ref: '#/components/schemas/SuccessResponse'
+ *
+ * /api/challans/{id}/confirm:
+ *   post:
+ *     summary: Confirm challan
+ *     description: Confirm a draft challan, deduct stock, and record inventory movements
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Challans
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       "200":
+ *         $ref: '#/components/schemas/SuccessResponse'
+ *
+ * /api/challans/{id}/cancel:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Challans
+ *     summary: Cancel a draft challan
+ *     responses:
+ *       "200":
+ *         $ref: '#/components/schemas/SuccessResponse'
  */
 
 const router = Router();
 
-router.get("/", authMiddleware, getChallans);
-router.get("/:id", authMiddleware, getChallanById);
-router.post("/", authMiddleware, validate(createChallanSchema), createChallan);
-router.put("/:id", authMiddleware, validate(updateChallanSchema), updateChallan);
-router.post("/:id/confirm", authMiddleware, validate(confirmChallanSchema), confirmChallan);
-router.delete("/:id", authMiddleware, deleteChallan);
+router.get("/", authMiddleware, requireRole(["ADMIN", "SALES", "ACCOUNTS"]), validate(challanListSchema), getChallans);
+router.get("/:id", authMiddleware, requireRole(["ADMIN", "SALES", "ACCOUNTS"]), getChallanById);
+router.post("/", authMiddleware, requireRole(["ADMIN", "SALES"]), validate(createChallanSchema), createChallan);
+router.post("/:id/confirm", authMiddleware, requireRole(["ADMIN", "SALES"]), validate(confirmChallanSchema), confirmChallan);
+router.post("/:id/cancel", authMiddleware, requireRole(["ADMIN", "SALES"]), cancelChallan);
+router.delete("/:id", authMiddleware, requireRole(["ADMIN"]), deleteChallan);
 
 export default router;

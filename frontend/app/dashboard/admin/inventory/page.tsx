@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react'
 import DashboardHeader from '@/components/dashboard-header'
 import { motion } from 'framer-motion'
 import { InventoryLog } from '@/lib/types'
-import { Plus, Search, LogIn, LogOut, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Search, LogIn, LogOut, Loader2 } from 'lucide-react'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import axiosClient from '@/lib/axiosClient'
 
 interface StockApiResult {
   items: Array<{
@@ -38,6 +37,7 @@ const mapStockLog = (log: any): InventoryLog => ({
 
 export default function InventoryPage() {
   const { token } = useAuth()
+  const authToken = token ?? undefined
   const [logs, setLogs] = useState<InventoryLog[]>([])
   const [productsList, setProductsList] = useState<any[]>([])
   const [productSearch, setProductSearch] = useState('')
@@ -60,8 +60,8 @@ export default function InventoryPage() {
     setError(null)
     try {
       const [stockData, prodData] = await Promise.all([
-        apiGet<StockApiResult>('/stock', token),
-        apiGet<any>('/products?limit=100', token),
+        apiGet<StockApiResult>('/stock', authToken),
+        apiGet<any>('/products?limit=100', authToken),
       ])
       setLogs(stockData.items.map(mapStockLog))
       setProductsList(prodData.items || [])
@@ -92,7 +92,7 @@ export default function InventoryPage() {
           quantity: Number(quantity),
           reason: reason || `Admin manual stock adjustment (${movementType})`,
         },
-        token
+        authToken
       )
       setShowModal(false)
       setSelectedProductId('')
@@ -103,16 +103,6 @@ export default function InventoryPage() {
       alert(err?.message || 'Failed to create inventory entry.')
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this log?')) return
-    try {
-      await axiosClient.delete(`/stock/${id}`)
-      await loadData()
-    } catch (err: any) {
-      alert(err?.message || 'Failed to delete log.')
     }
   }
 
@@ -263,13 +253,12 @@ export default function InventoryPage() {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Reason</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Created By</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="w-5 h-5 animate-spin text-amber-500" /> Loading inventory...
                     </div>
@@ -277,7 +266,7 @@ export default function InventoryPage() {
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
                     No inventory records found.
                   </td>
                 </tr>
@@ -307,15 +296,6 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 text-sm text-muted-foreground">{log.reason}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{log.createdBy}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(log.createdAt).toLocaleDateString('en-IN')}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        onClick={() => handleDelete(log.id)}
-                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-600 dark:text-red-400"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </motion.button>
-                    </td>
                   </motion.tr>
                 ))
               )}

@@ -1,8 +1,9 @@
 ﻿import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { updateProfile, viewProfile } from "../controllers/profile.controller";
-import { updateProfileSchema } from "../validators/auth.validator";
+import { changePasswordSchema, updateProfileSchema } from "../validators/auth.validator";
 import { validate } from "../middlewares/validate.middleware";
+import { changePassword } from "../controllers/profile.controller";
 
 /**
  * @openapi
@@ -30,7 +31,30 @@ import { validate } from "../middlewares/validate.middleware";
  *             properties:
  *               name:
  *                 type: string
- *               password:
+ *     responses:
+ *       "200":
+ *         $ref: '#/components/schemas/SuccessResponse'
+ *
+ * /api/profile/password:
+ *   put:
+ *     security:
+ *       - bearerAuth: []
+ *     tags:
+ *       - Profile
+ *     summary: Change current user's password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
  *                 type: string
  *     responses:
  *       "200":
@@ -41,5 +65,6 @@ const router = Router();
 
 router.get("/", authMiddleware, viewProfile);
 router.put("/", authMiddleware, validate(updateProfileSchema), updateProfile);
+router.put("/password", authMiddleware, validate(changePasswordSchema), changePassword);
 
 export default router;

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 import {
   getDashboardStats,
   getWarehouseDashboardStats,
@@ -44,8 +45,8 @@ import {
 
 const router = Router();
 
-router.get("/", authMiddleware, getDashboardStats);
-router.get("/warehouse", authMiddleware, getWarehouseDashboardStats);
-router.get("/accounts", authMiddleware, getAccountsDashboardStats);
+router.get("/", authMiddleware, requireRole(["ADMIN", "SALES"]), getDashboardStats);
+router.get("/warehouse", authMiddleware, requireRole(["ADMIN", "WAREHOUSE"]), getWarehouseDashboardStats);
+router.get("/accounts", authMiddleware, requireRole(["ADMIN", "ACCOUNTS"]), getAccountsDashboardStats);
 
 export default router;

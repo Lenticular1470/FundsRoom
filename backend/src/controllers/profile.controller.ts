@@ -1,6 +1,6 @@
 ﻿import { Request, Response, NextFunction } from "express";
 import { successResponse } from "../utils/response";
-import { updateProfileService, viewProfileService } from "../services/profile.service";
+import { changePasswordService, updateProfileService, viewProfileService } from "../services/profile.service";
 
 export const viewProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -22,6 +22,21 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
     }
     const data = await updateProfileService(userId, req.body);
     return successResponse(res, "Profile updated successfully.", data);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      const error: any = new Error("Unauthorized.");
+      error.status = 401;
+      throw error;
+    }
+    await changePasswordService(userId, req.body);
+    return successResponse(res, "Password updated successfully.", {});
   } catch (error) {
     return next(error);
   }

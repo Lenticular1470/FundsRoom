@@ -2,6 +2,7 @@
 import { createCustomerSchema, updateCustomerSchema } from "../validators/customer.validator";
 import { validate } from "../middlewares/validate.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 import {
   createCustomer,
   deleteCustomer,
@@ -113,10 +114,10 @@ import {
 
 const router = Router();
 
-router.get("/", getCustomers);
-router.get("/:id", getCustomerById);
-router.post("/", authMiddleware, validate(createCustomerSchema), createCustomer);
-router.put("/:id", authMiddleware, validate(updateCustomerSchema), updateCustomer);
-router.delete("/:id", authMiddleware, deleteCustomer);
+router.get("/", authMiddleware, requireRole(["ADMIN", "SALES", "ACCOUNTS"]), getCustomers);
+router.get("/:id", authMiddleware, requireRole(["ADMIN", "SALES", "ACCOUNTS"]), getCustomerById);
+router.post("/", authMiddleware, requireRole(["ADMIN", "SALES"]), validate(createCustomerSchema), createCustomer);
+router.put("/:id", authMiddleware, requireRole(["ADMIN", "SALES"]), validate(updateCustomerSchema), updateCustomer);
+router.delete("/:id", authMiddleware, requireRole(["ADMIN"]), deleteCustomer);
 
 export default router;

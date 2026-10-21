@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import DashboardHeader from '@/components/dashboard-header'
 import { motion } from 'framer-motion'
 import {
@@ -13,7 +13,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts'
 import { Download, FileText, Loader2, Sparkles } from 'lucide-react'
@@ -21,100 +20,142 @@ import axiosClient from '@/lib/axiosClient'
 
 const COLORS = ['#d97706', '#059669', '#0891b2', '#8b5cf6']
 
+interface AdminReportsData {
+  summary: {
+    totalRevenue: number
+    totalOrders: number
+    activeCustomers: number
+    avgOrderValue: number
+  }
+  salesTrend: Array<{ month: string; revenue: number; orders: number }>
+  categoryData: Array<{ name: string; value: number }>
+  topCustomers: Array<{ name: string; orders: number; totalValue: number }>
+  recentReports: Array<{ id: string; title: string; type: string; date: string; description: string }>
+}
+
+const recentReports = [
+  { id: 'sales', title: 'Monthly Sales Report', type: 'Sales', description: 'Confirmed challans matching the selected filters' },
+  { id: 'inventory', title: 'Inventory Status Report', type: 'Inventory', description: 'Current product stock levels and value' },
+  { id: 'customers', title: 'Customer Analysis', type: 'Customer', description: 'Customer records and account status' },
+  { id: 'financial', title: 'Financial Summary', type: 'Financial', description: 'Confirmed sales and revenue details' },
+]
+
+const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
+
+const downloadFile = (content: string, name: string, type: string) => {
+  const url = URL.createObjectURL(new Blob([content], { type }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const fetchAllPages = async <T,>(path: string, params: Record<string, string | number> = {}): Promise<T[]> => {
+  const firstResponse = await axiosClient.get(path, { params: { ...params, page: 1, limit: 100 } })
+  const firstPage = firstResponse.data?.data || firstResponse.data
+  const firstItems: T[] = firstPage.items || []
+  const totalPages = Number(firstPage.totalPages) || 1
+  if (totalPages <= 1) return firstItems
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      axiosClient.get(path, { params: { ...params, page: index + 2, limit: 100 } }),
+    ),
+  )
+  return firstItems.concat(...remainingPages.map((response) => {
+    const page = response.data?.data || response.data
+    return (page.items || []) as T[]
+  }))
+}
+
 export default function ReportsPage() {
-  const [loading, setLoading] = useState(false)
-  const [reportData, setReportData] = useState<{
-    salesTrend: any[]
-    categoryData: any[]
-    recentReports: any[]
-  }>({
-    salesTrend: [
-      { month: 'Jan', sales: 4000, target: 3500 },
-      { month: 'Feb', sales: 3000, target: 3500 },
-      { month: 'Mar', sales: 5000, target: 4000 },
-      { month: 'Apr', sales: 4500, target: 4500 },
-      { month: 'May', sales: 6200, target: 5000 },
-      { month: 'Jun', sales: 5800, target: 5500 },
-    ],
-    categoryData: [
-      { name: 'Hardware', value: 45 },
-      { name: 'Networking', value: 30 },
-      { name: 'Cables & Accessories', value: 25 },
-    ],
-    recentReports: [
-      {
-        id: 1,
-        title: 'Monthly Sales Report',
-        type: 'Sales',
-        date: new Date().toISOString().split('T')[0],
-        description: 'Comprehensive sales analysis and confirmed order metrics',
-      },
-      {
-        id: 2,
-        title: 'Inventory Status Report',
-        type: 'Inventory',
-        date: new Date().toISOString().split('T')[0],
-        description: 'Current stock levels, low-stock warnings, and movements',
-      },
-      {
-        id: 3,
-        title: 'Customer Analysis',
-        type: 'Customer',
-        date: new Date().toISOString().split('T')[0],
-        description: 'Customer segmentation, business leads, and active clients',
-      },
-      {
-        id: 4,
-        title: 'Financial Summary',
-        type: 'Financial',
-        date: new Date().toISOString().split('T')[0],
-        description: 'Revenue totals, invoiced amounts, and accounts ledger',
-      },
-    ],
-  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [category, setCategory] = useState('')
+  const [warehouse, setWarehouse] = useState('')
+  const [appliedFilters, setAppliedFilters] = useState({ dateFrom: '', dateTo: '', category: '', warehouse: '' })
+  const [reportData, setReportData] = useState<AdminReportsData | null>(null)
+
+  const reportFilters = {
+    ...(appliedFilters.dateFrom ? { dateFrom: appliedFilters.dateFrom } : {}),
+    ...(appliedFilters.dateTo ? { dateTo: appliedFilters.dateTo } : {}),
+    ...(appliedFilters.category.trim() ? { category: appliedFilters.category.trim() } : {}),
+    ...(appliedFilters.warehouse.trim() ? { warehouse: appliedFilters.warehouse.trim() } : {}),
+  }
+
+  const fetchReports = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await axiosClient.get('/reports', { params: reportFilters })
+      const data = response.data?.data || response.data
+      setReportData({
+        summary: data.summary,
+        salesTrend: data.salesTrend || [],
+        topCustomers: data.topCustomers || [],
+        categoryData: (data.productDistribution || []).map((entry: { category: string; revenue: number }) => ({
+          name: entry.category,
+          value: entry.revenue,
+        })),
+        recentReports: recentReports.map((report) => ({
+          ...report,
+          date: new Date().toISOString().split('T')[0],
+        })),
+      })
+    } catch (err: any) {
+      setReportData(null)
+      setError(err?.message || 'Failed to load report data.')
+    } finally {
+      setLoading(false)
+    }
+  }, [appliedFilters])
+
+  useEffect(() => {
+    fetchReports()
+  }, [fetchReports])
 
   const handleDownloadSingleReport = async (reportType: string, title: string) => {
     try {
       setLoading(true)
-      let csvContent = `Report Title,${title}\nGenerated Date,${new Date().toLocaleString()}\n\n`
+      setError(null)
+      let csvContent = `Report Title,${csvCell(title)}\nGenerated Date,${csvCell(new Date().toLocaleString())}\n\n`
 
       if (reportType === 'Sales' || reportType === 'Financial') {
-        const res = await axiosClient.get('/challans')
-        const items = res.data?.data?.items || []
+        const items = await fetchAllPages<any>('/challans', { ...reportFilters, status: 'CONFIRMED' })
         csvContent += 'Challan Number,Customer,Status,Date,Total Amount\n'
         items.forEach((c: any) => {
           const total = (c.items || []).reduce((s: number, i: any) => s + Number(i.price) * i.quantity, 0)
-          csvContent += `"${c.challanNumber}","${c.customer?.name || 'Client'}","${c.status}","${new Date(
-            c.createdAt
-          ).toLocaleDateString('en-IN')}",${total}\n`
+          csvContent += `${csvCell(c.challanNumber)},${csvCell(c.customer?.name || 'Client')},${csvCell(c.status)},${csvCell(
+            new Date(c.createdAt).toLocaleDateString('en-IN')
+          )},${total}\n`
         })
       } else if (reportType === 'Inventory') {
-        const res = await axiosClient.get('/products')
-        const items = res.data?.data?.items || []
+        const res = await axiosClient.get('/reports/inventory', { params: reportFilters })
+        const items = res.data?.data?.products || []
         csvContent += 'SKU,Product Name,Category,In Stock,Unit Price\n'
         items.forEach((p: any) => {
-          csvContent += `"${p.sku}","${p.name}","${p.category}",${p.currentStock || 0},${p.price}\n`
+          csvContent += `${csvCell(p.sku)},${csvCell(p.name)},${csvCell(p.category)},${p.stock || 0},${p.price}\n`
         })
       } else {
-        const res = await axiosClient.get('/customers')
-        const items = res.data?.data?.items || []
+        const items = await fetchAllPages<any>('/customers')
         csvContent += 'Customer Name,Email,Phone,Company,Status\n'
         items.forEach((cust: any) => {
-          csvContent += `"${cust.name}","${cust.email || ''}","${cust.phone || ''}","${
-            cust.businessName || ''
-          }","${cust.status}"\n`
+          csvContent += `${csvCell(cust.name)},${csvCell(cust.email)},${csvCell(cust.phone)},${csvCell(
+            cust.businessName
+          )},${csvCell(cust.status)}\n`
         })
       }
 
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadFile(
+        csvContent,
+        `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`,
+        'text/csv;charset=utf-8',
+      )
     } catch (err: any) {
-      alert('Failed to generate report file: ' + err.message)
+      setError(err?.message || 'Failed to generate report file.')
     } finally {
       setLoading(false)
     }
@@ -123,19 +164,21 @@ export default function ReportsPage() {
   const handleGenerateNewReport = async () => {
     try {
       setLoading(true)
-      const [challansRes, productsRes, customersRes] = await Promise.all([
-        axiosClient.get('/challans'),
-        axiosClient.get('/products'),
-        axiosClient.get('/customers'),
+      setError(null)
+      const [challans, productsRes, customers] = await Promise.all([
+        fetchAllPages<any>('/challans', { ...reportFilters, status: 'CONFIRMED' }),
+        axiosClient.get('/reports/inventory', { params: reportFilters }),
+        fetchAllPages<any>('/customers'),
       ])
 
-      const challans = challansRes.data?.data?.items || []
-      const products = productsRes.data?.data?.items || []
-      const customers = customersRes.data?.data?.items || []
+      const products = productsRes.data?.data?.products || []
 
       let reportText = `====================================================\n`
       reportText += `   FUNDSROOM MINI ERP & CRM MASTER AUDIT REPORT\n`
       reportText += `   Generated On: ${new Date().toLocaleString()}\n`
+      reportText += `   Date Range: ${appliedFilters.dateFrom || 'All'} to ${appliedFilters.dateTo || 'All'}\n`
+      reportText += `   Category: ${appliedFilters.category || 'All'}\n`
+      reportText += `   Warehouse: ${appliedFilters.warehouse || 'All'}\n`
       reportText += `====================================================\n\n`
 
       reportText += `1. EXECUTIVE SUMMARY\n`
@@ -147,7 +190,7 @@ export default function ReportsPage() {
       reportText += `2. PRODUCTS & INVENTORY SNAPSHOT\n`
       reportText += `----------------------------------------------------\n`
       products.forEach((p: any) => {
-        reportText += `SKU: ${p.sku} | ${p.name} | Stock: ${p.currentStock || 0} units | Price: ₹${p.price}\n`
+        reportText += `SKU: ${p.sku} | ${p.name} | Stock: ${p.stock || 0} units | Price: ₹${p.price}\n`
       })
       reportText += `\n3. RECENT SALES CHALLANS\n`
       reportText += `----------------------------------------------------\n`
@@ -163,7 +206,7 @@ export default function ReportsPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      alert('Error compiling report: ' + err.message)
+      setError(err?.message || 'Error compiling report.')
     } finally {
       setLoading(false)
     }
@@ -176,6 +219,46 @@ export default function ReportsPage() {
         description="View detailed business analytics and generate reports"
       />
 
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          setAppliedFilters({ dateFrom, dateTo, category, warehouse })
+        }}
+        className="mb-6 grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
+      >
+        <label className="text-sm text-muted-foreground">
+          From
+          <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-foreground" />
+        </label>
+        <label className="text-sm text-muted-foreground">
+          To
+          <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-foreground" />
+        </label>
+        <label className="text-sm text-muted-foreground">
+          Category
+          <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="All categories" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-foreground" />
+        </label>
+        <label className="text-sm text-muted-foreground">
+          Warehouse
+          <input value={warehouse} onChange={(event) => setWarehouse(event.target.value)} placeholder="All warehouses" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-foreground" />
+        </label>
+        <button disabled={loading} type="submit" className="self-end rounded-lg bg-amber-500 px-4 py-2 font-bold text-slate-950 disabled:opacity-50">
+          Apply filters
+        </button>
+      </form>
+
+      {error && <div role="alert" className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
+      {loading && <div role="status" className="mb-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading report data…</div>}
+
+      {reportData && (
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">Revenue</p><p className="text-xl font-bold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(reportData.summary.totalRevenue)}</p></div>
+          <div className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">Confirmed orders</p><p className="text-xl font-bold">{reportData.summary.totalOrders}</p></div>
+          <div className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">Active customers</p><p className="text-xl font-bold">{reportData.summary.activeCustomers}</p></div>
+          <div className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">Average order value</p><p className="text-xl font-bold">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(reportData.summary.avgOrderValue)}</p></div>
+        </div>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -184,9 +267,9 @@ export default function ReportsPage() {
         <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
           <h2 className="text-lg font-bold text-foreground mb-4">Sales Performance</h2>
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={reportData.salesTrend}>
+            <LineChart data={reportData?.salesTrend || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis stroke="var(--color-muted-foreground)" />
+              <XAxis dataKey="month" stroke="var(--color-muted-foreground)" />
               <YAxis stroke="var(--color-muted-foreground)" />
               <Tooltip
                 contentStyle={{
@@ -195,22 +278,15 @@ export default function ReportsPage() {
                   borderRadius: '8px',
                 }}
               />
-              <Legend />
               <Line
                 type="monotone"
-                dataKey="sales"
+                dataKey="revenue"
                 stroke="#d97706"
                 strokeWidth={2}
               />
-              <Line
-                type="monotone"
-                dataKey="target"
-                stroke="#059669"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-              />
             </LineChart>
           </ResponsiveContainer>
+          {!loading && reportData?.salesTrend.length === 0 && <p className="mt-3 text-center text-sm text-muted-foreground">No sales data for these filters.</p>}
         </div>
 
         <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
@@ -218,7 +294,7 @@ export default function ReportsPage() {
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
-                data={reportData.categoryData}
+                data={reportData?.categoryData || []}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -227,7 +303,7 @@ export default function ReportsPage() {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {reportData.categoryData.map((entry, index) => (
+                {(reportData?.categoryData || []).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -240,6 +316,7 @@ export default function ReportsPage() {
               />
             </PieChart>
           </ResponsiveContainer>
+          {!loading && reportData?.categoryData.length === 0 && <p className="mt-3 text-center text-sm text-muted-foreground">No category sales for these filters.</p>}
         </div>
       </motion.div>
 
@@ -251,7 +328,7 @@ export default function ReportsPage() {
       >
         <h2 className="text-lg font-bold text-foreground mb-4">Recent Reports</h2>
         <div className="space-y-3">
-          {reportData.recentReports.map((report, idx) => (
+          {(reportData?.recentReports || []).map((report, idx) => (
             <motion.div
               key={report.id}
               initial={{ opacity: 0, x: -20 }}

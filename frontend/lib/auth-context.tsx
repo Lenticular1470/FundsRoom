@@ -19,7 +19,7 @@ const AUTH_STORAGE_KEY = 'fundsroom_auth'
 
 const roleMap: Record<string, UserRole> = {
   ADMIN: 'admin',
-  USER: 'admin',
+  USER: 'sales',
   SALES: 'sales',
   WAREHOUSE: 'warehouse',
   ACCOUNTS: 'accounts',
@@ -148,4 +148,3 @@ export const useAuth = () => {
   }
   return context
 }
-

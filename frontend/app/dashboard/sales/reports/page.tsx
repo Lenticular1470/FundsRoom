@@ -46,43 +46,87 @@ export default function SalesReportsPage() {
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [category, setCategory] = useState('')
+  const [appliedFilters, setAppliedFilters] = useState({ dateFrom: '', dateTo: '', category: '' })
+  const [exporting, setExporting] = useState(false)
+
+  const reportFilters = {
+    ...(appliedFilters.dateFrom ? { dateFrom: appliedFilters.dateFrom } : {}),
+    ...(appliedFilters.dateTo ? { dateTo: appliedFilters.dateTo } : {}),
+    ...(appliedFilters.category.trim() ? { category: appliedFilters.category.trim() } : {}),
+  }
 
   const fetchReports = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await axiosClient.get('/reports')
+      const res = await axiosClient.get('/reports', { params: reportFilters })
       setData(res.data?.data || res.data)
     } catch (err: any) {
       setError(err.message || 'Failed to load live report analytics.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [appliedFilters])
 
   useEffect(() => {
     fetchReports()
   }, [fetchReports])
 
   // CSV Export trigger
-  const handleExportCSV = () => {
-    if (!data) return
-    const rows = [
-      ['Metric', 'Value'],
-      ['Total Revenue', data.summary?.totalRevenue || 0],
-      ['Total Orders', data.summary?.totalOrders || 0],
-      ['Active Customers', data.summary?.activeCustomers || 0],
-      ['Average Order Value', data.summary?.avgOrderValue || 0],
-    ]
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(',')).join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `Sales_Report_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleExportCSV = async () => {
+    setExporting(true)
+    setError(null)
+    try {
+      const firstResponse = await axiosClient.get('/challans', {
+        params: { ...reportFilters, status: 'CONFIRMED', page: 1, limit: 100 },
+      })
+      const firstPage = firstResponse.data?.data || firstResponse.data
+      const pages = Number(firstPage.totalPages) || 1
+      const remainingResponses = await Promise.all(
+        Array.from({ length: pages - 1 }, (_, index) =>
+          axiosClient.get('/challans', {
+            params: { ...reportFilters, status: 'CONFIRMED', page: index + 2, limit: 100 },
+          }),
+        ),
+      )
+      const challans = (firstPage.items || []).concat(
+        ...remainingResponses.map((response) => {
+          const page = response.data?.data || response.data
+          return page.items || []
+        }),
+      )
+      const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
+      const rows = [
+        ['Challan Number', 'Customer', 'Date', 'Product', 'SKU', 'Category', 'Quantity', 'Unit Price', 'Line Total'],
+        ...challans.flatMap((challan: any) =>
+          (challan.items || []).map((item: any) => [
+            challan.challanNumber,
+            challan.customer?.name || '',
+            challan.createdAt ? new Date(challan.createdAt).toLocaleDateString('en-IN') : '',
+            item.productName,
+            item.sku,
+            item.category,
+            item.quantity,
+            item.price,
+            Number(item.price) * Number(item.quantity),
+          ]),
+        ),
+      ]
+      const csvContent = rows.map((row) => row.map(csvCell).join(',')).join('\n')
+      const url = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Sales_Report_${new Date().toISOString().split('T')[0]}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.message || 'Failed to export sales report.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleDownloadPDF = () => {
@@ -107,6 +151,33 @@ export default function SalesReportsPage() {
             Exportable metrics tailored for sales operations
           </p>
         </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            setAppliedFilters({ dateFrom, dateTo, category })
+          }}
+          className="grid grid-cols-1 gap-3 rounded-2xl border border-[#E8DFC9] bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <label className="text-xs font-semibold text-slate-600">
+            From
+            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="mt-1 w-full rounded-lg border border-[#E8DFC9] p-2 text-slate-900" />
+          </label>
+          <label className="text-xs font-semibold text-slate-600">
+            To
+            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="mt-1 w-full rounded-lg border border-[#E8DFC9] p-2 text-slate-900" />
+          </label>
+          <label className="text-xs font-semibold text-slate-600">
+            Category
+            <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="All categories" className="mt-1 w-full rounded-lg border border-[#E8DFC9] p-2 text-slate-900" />
+          </label>
+          <button type="submit" disabled={loading} className="self-end rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 disabled:opacity-50">
+            Apply filters
+          </button>
+        </form>
+
+        {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
+        {loading && <div role="status" className="flex items-center gap-2 text-sm text-slate-600"><RefreshCw className="h-4 w-4 animate-spin" />Loading live report data…</div>}
 
         <motion.button
           whileHover={{ scale: 1.03 }}
@@ -163,8 +234,8 @@ export default function SalesReportsPage() {
             </p>
           </div>
           <div className="mt-6 pt-4 border-t border-[#F0E8DD] flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-800">Export Raw CSV</span>
-            <Download className="w-4 h-4 text-emerald-700" />
+            <span className="text-xs font-bold text-amber-800">{exporting ? 'Preparing export…' : 'Export all matching sales'}</span>
+            {exporting ? <RefreshCw className="w-4 h-4 animate-spin text-emerald-700" /> : <Download className="w-4 h-4 text-emerald-700" />}
           </div>
         </motion.div>
 

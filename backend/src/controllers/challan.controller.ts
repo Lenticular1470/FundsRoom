@@ -2,11 +2,11 @@
 import { successResponse } from "../utils/response";
 import {
   confirmChallanService,
+  cancelChallanService,
   createChallanService,
   deleteChallanService,
   getChallanByIdService,
-  getChallansService,
-  updateChallanService
+  getChallansService
 } from "../services/challan.service";
 
 export const getChallans = async (req: Request, res: Response, next: NextFunction) => {
@@ -37,19 +37,19 @@ export const createChallan = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const updateChallan = async (req: Request, res: Response, next: NextFunction) => {
+export const confirmChallan = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await updateChallanService(req.params.id, req.body);
-    return successResponse(res, "Challan updated successfully.", data);
+    const data = await confirmChallanService(req.params.id, req.user?.id);
+    return successResponse(res, "Challan confirmed successfully.", data);
   } catch (error) {
     return next(error);
   }
 };
 
-export const confirmChallan = async (req: Request, res: Response, next: NextFunction) => {
+export const cancelChallan = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await confirmChallanService(req.params.id, req.body);
-    return successResponse(res, "Challan confirmed successfully.", data);
+    const data = await cancelChallanService(req.params.id);
+    return successResponse(res, "Challan cancelled successfully.", data);
   } catch (error) {
     return next(error);
   }

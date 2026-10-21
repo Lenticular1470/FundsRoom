@@ -13,7 +13,6 @@ import {
   Lock,
   Mail,
   User,
-  Briefcase,
   Eye,
   EyeOff,
   AlertCircle,
@@ -41,9 +40,6 @@ const registerSchema = z.object({
     .string()
     .min(1, 'Work Email is required')
     .email('Must be a valid email'),
-  role: z.enum(['ADMIN', 'SALES', 'WAREHOUSE', 'ACCOUNTS'], {
-    errorMap: () => ({ message: 'Role is required' }),
-  }),
   password: z
     .string()
     .min(1, 'Password is required')
@@ -109,7 +105,6 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
     defaultValues: {
       name: '',
       email: '',
-      role: 'ADMIN',
       password: '',
     },
   })
@@ -164,7 +159,6 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
         name: data.name,
         email: data.email,
         password: data.password,
-        role: data.role,
       })
 
       showToast('success', 'Account created successfully! Please sign in.')
@@ -455,29 +449,9 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
                   )}
                 </div>
 
-                {/* Department Role */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-amber-900 dark:text-amber-100">
-                    Department Role
-                  </label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-4 top-3.5 w-5 h-5 text-amber-500 pointer-events-none" />
-                    <select
-                      {...registerRegister('role')}
-                      className="w-full pl-12 pr-4 py-3 rounded-2xl border border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-slate-800 text-amber-900 dark:text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="ADMIN">ADMIN</option>
-                      <option value="SALES">SALES</option>
-                      <option value="WAREHOUSE">WAREHOUSE</option>
-                      <option value="ACCOUNTS">ACCOUNTS</option>
-                    </select>
-                  </div>
-                  {registerErrors.role && (
-                    <p className="text-red-500 text-xs font-medium pl-1">
-                      {registerErrors.role.message}
-                    </p>
-                  )}
-                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  New accounts are created with Sales access. Contact an administrator if your role should be changed.
+                </p>
 
                 {/* Password */}
                 <div className="space-y-1.5">

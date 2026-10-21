@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/role.middleware";
+import { validate } from "../middlewares/validate.middleware";
 import { getReports, getInventoryReport, getMovementsReport } from "../controllers/report.controller";
+import { reportFilterSchema } from "../validators/report.validator";
 
 /**
  * @openapi
@@ -40,8 +43,8 @@ import { getReports, getInventoryReport, getMovementsReport } from "../controlle
 
 const router = Router();
 
-router.get("/", authMiddleware, getReports);
-router.get("/inventory", authMiddleware, getInventoryReport);
-router.get("/movements", authMiddleware, getMovementsReport);
+router.get("/", authMiddleware, requireRole(["ADMIN", "SALES", "ACCOUNTS"]), validate(reportFilterSchema), getReports);
+router.get("/inventory", authMiddleware, requireRole(["ADMIN", "WAREHOUSE", "ACCOUNTS"]), validate(reportFilterSchema), getInventoryReport);
+router.get("/movements", authMiddleware, requireRole(["ADMIN", "WAREHOUSE", "ACCOUNTS"]), validate(reportFilterSchema), getMovementsReport);
 
 export default router;

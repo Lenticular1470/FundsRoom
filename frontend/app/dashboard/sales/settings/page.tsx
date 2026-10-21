@@ -31,6 +31,7 @@ const profileSchema = z.object({
 
 const passwordSchema = z
   .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
     password: z
       .string()
       .min(8, 'Minimum 8 characters')
@@ -72,7 +73,7 @@ export default function ProfileSettingsPage() {
 
   const passwordForm = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
-    defaultValues: { password: '', confirmPassword: '' },
+    defaultValues: { currentPassword: '', password: '', confirmPassword: '' },
   })
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -115,8 +116,11 @@ export default function ProfileSettingsPage() {
   // ─── Change Password ──────────────────────────────────────────────────────
   const onPasswordSubmit = async (data: PasswordForm) => {
     try {
-      await axiosClient.put('/profile', { password: data.password })
-      passwordForm.reset({ password: '', confirmPassword: '' })
+      await axiosClient.put('/profile/password', {
+        currentPassword: data.currentPassword,
+        newPassword: data.password,
+      })
+      passwordForm.reset({ currentPassword: '', password: '', confirmPassword: '' })
       showToast('success', 'Password changed successfully!')
     } catch (err: any) {
       showToast('error', err.message || 'Failed to change password.')
@@ -190,7 +194,7 @@ export default function ProfileSettingsPage() {
               </span>
             </div>
           </div>
-          <BadgeCheck className="w-6 h-6 text-emerald-400 ml-auto flex-shrink-0" title="Verified account" />
+          <BadgeCheck className="w-6 h-6 text-emerald-400 ml-auto flex-shrink-0" aria-label="Verified account" />
         </motion.div>
       )}
 
@@ -286,6 +290,18 @@ export default function ProfileSettingsPage() {
         <p className="text-[11px] text-slate-400 mb-5">Choose a strong password with uppercase, number, and special character.</p>
 
         <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-slate-300 font-medium mb-1.5">Current Password</label>
+            <input
+              {...passwordForm.register('currentPassword')}
+              type="password"
+              autoComplete="current-password"
+              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+            />
+            {passwordForm.formState.errors.currentPassword && (
+              <p className="text-red-400 mt-1.5">{passwordForm.formState.errors.currentPassword.message}</p>
+            )}
+          </div>
           <div>
             <label className="block text-slate-300 font-medium mb-1.5">New Password</label>
             <div className="relative">

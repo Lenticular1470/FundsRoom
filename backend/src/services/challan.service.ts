@@ -1,11 +1,21 @@
-import { createChallan as createChallanRepo, deleteChallan, findChallan, findChallans, updateChallan } from "../repositories/challan.repository";
+import { createChallan as createChallanRepo, deleteChallan, findChallan, findChallans } from "../repositories/challan.repository";
 import { prisma } from "../config/database";
+import { randomUUID } from "crypto";
 
 export const getChallansService = async (query: any) => {
   const page = Number(query.page) || 1;
-  const limit = Number(query.limit) || 20;
+  const limit = Math.min(Number(query.limit) || 20, 100);
   const skip = (page - 1) * limit;
-  return findChallans({ skip, take: limit, search: query.search as string });
+  return findChallans({
+    skip,
+    take: limit,
+    search: query.search as string,
+    dateFrom: query.dateFrom,
+    dateTo: query.dateTo,
+    category: query.category,
+    warehouse: query.warehouse,
+    status: query.status,
+  });
 };
 
 export const getChallanByIdService = async (id: string) => {
@@ -18,105 +28,115 @@ export const getChallanByIdService = async (id: string) => {
   return challan;
 };
 
-// Generate a unique challan number like SCH-2026-001
-const generateChallanNumber = async (): Promise<string> => {
-  const year = new Date().getFullYear();
-  const count = await prisma.challan.count();
-  const seq = String(count + 1).padStart(3, "0");
-  return `SCH-${year}-${seq}`;
-};
+const generateChallanNumber = () => `SCH-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
 export const createChallanService = async (payload: any) => {
-  // Auto-generate challanNumber if not provided
-  const challanNumber = payload.challanNumber || (await generateChallanNumber());
+  const enrichedItems = await Promise.all(payload.items.map(async (item: { productId: string; quantity: number }) => {
+    const product = await prisma.product.findUnique({ where: { id: item.productId } });
+    if (!product) {
+      const error = new Error(`Product not found: ${item.productId}`) as any;
+      error.status = 404;
+      throw error;
+    }
+    return {
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      category: product.category || "General",
+      price: Number(product.price),
+      quantity: item.quantity,
+    };
+  }));
 
-  // Enrich each item with product details from DB (productName, sku, category, price)
-  const enrichedItems = await Promise.all(
-    (payload.items || []).map(async (item: any) => {
-      // If productName already provided, use it as-is
-      if (item.productName && item.sku && item.price != null) {
-        return item;
-      }
-      // Otherwise look up product by productId
-      if (item.productId) {
-        const product = await prisma.product.findUnique({ where: { id: item.productId } });
-        if (!product) {
-          const err = new Error(`Product not found: ${item.productId}`) as any;
-          err.status = 404;
-          throw err;
-        }
-        return {
-          productId: product.id,
-          productName: product.name,
-          sku: product.sku,
-          category: product.category || "General",
-          price: Number(product.price),
-          quantity: item.quantity || 1,
-        };
-      }
-      // Fallback: use provided data
-      return item;
-    })
-  );
-
-  return createChallanRepo({ ...payload, challanNumber, items: enrichedItems });
+  return createChallanRepo({
+    ...payload,
+    challanNumber: generateChallanNumber(),
+    status: "DRAFT",
+    items: enrichedItems,
+  });
 };
 
-export const updateChallanService = async (id: string, payload: any) => {
-  const challan = await findChallan(id);
-  if (!challan) {
-    const error = new Error("Challan not found.") as any;
-    error.status = 404;
+export const confirmChallanService = async (id: string, actorId?: string) => {
+  if (!actorId) {
+    const error = new Error("Unauthorized user for challan confirmation.") as any;
+    error.status = 401;
     throw error;
   }
-  return updateChallan(id, payload);
-};
-
-export const confirmChallanService = async (id: string, payload: any) => {
-  const challan = await findChallan(id);
-  if (!challan) {
-    const error = new Error("Challan not found.") as any;
-    error.status = 404;
-    throw error;
-  }
-  if (challan.status !== "DRAFT") {
-    const error = new Error("Only draft challans can be confirmed.") as any;
-    error.status = 400;
-    throw error;
-  }
-
   return prisma.$transaction(async (tx) => {
+    const challan = await tx.challan.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!challan) {
+      const error = new Error("Challan not found.") as any;
+      error.status = 404;
+      throw error;
+    }
+
+    const claimed = await tx.challan.updateMany({
+      where: { id, status: "DRAFT" },
+      data: { status: "CONFIRMED", updatedAt: new Date() },
+    });
+    if (claimed.count !== 1) {
+      const error = new Error("Only draft challans can be confirmed.") as any;
+      error.status = 400;
+      throw error;
+    }
+
     for (const item of challan.items) {
       if (!item.productId) {
         const error = new Error(`Product reference missing for item ${item.id}.`) as any;
         error.status = 400;
         throw error;
       }
-      const product = await tx.product.findUnique({ where: { id: item.productId } });
-      if (!product) {
-        const error = new Error(`Product not found for item ${item.id}.`) as any;
-        error.status = 404;
-        throw error;
-      }
-      const currentStock = product.currentStock ?? 0;
-      if (currentStock - item.quantity < 0) {
-        const error = new Error(`Insufficient stock for product ${product.name}.`) as any;
+      const stockUpdate = await tx.product.updateMany({
+        where: { id: item.productId, currentStock: { gte: item.quantity } },
+        data: { currentStock: { decrement: item.quantity }, updatedAt: new Date() },
+      });
+      if (stockUpdate.count !== 1) {
+        const error = new Error(`Product missing or insufficient stock for challan item ${item.id}.`) as any;
         error.status = 400;
         throw error;
       }
-      await tx.product.update({ where: { id: product.id }, data: { currentStock: currentStock - item.quantity } });
+      await tx.stockMovement.create({
+        data: {
+          productId: item.productId,
+          quantity: item.quantity,
+          movementType: "OUT",
+          reason: `Sales challan ${challan.challanNumber}`,
+          createdById: actorId,
+        },
+      });
     }
 
-    return tx.challan.update({ where: { id }, data: { status: "CONFIRMED" } });
+    return tx.challan.findUnique({
+      where: { id },
+      include: { items: true, customer: true, createdBy: true },
+    });
   });
 };
 
-export const deleteChallanService = async (id: string) => {
-  const challan = await findChallan(id);
-  if (!challan) {
-    const error = new Error("Challan not found.") as any;
-    error.status = 404;
+export const cancelChallanService = async (id: string) => {
+  const result = await prisma.challan.updateMany({
+    where: { id, status: "DRAFT" },
+    data: { status: "CANCELLED", updatedAt: new Date() },
+  });
+  if (result.count !== 1) {
+    const existing = await findChallan(id);
+    const error = new Error(existing ? "Only draft challans can be cancelled." : "Challan not found.") as any;
+    error.status = existing ? 400 : 404;
     throw error;
   }
-  return deleteChallan(id);
+  return findChallan(id);
+};
+
+export const deleteChallanService = async (id: string) => {
+  const result = await deleteChallan(id);
+  if (result.count !== 1) {
+    const existing = await findChallan(id);
+    const error = new Error(existing ? "Only draft challans can be deleted." : "Challan not found.") as any;
+    error.status = existing ? 400 : 404;
+    throw error;
+  }
+  return {};
 };

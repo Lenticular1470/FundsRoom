@@ -2,6 +2,7 @@
 import { createProductSchema, updateProductSchema } from "../validators/product.validator";
 import { validate } from "../middlewares/validate.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/role.middleware";
 import {
   createProduct,
   deleteProduct,
@@ -98,10 +99,10 @@ import {
 
 const router = Router();
 
-router.get("/", getProducts);
-router.get("/:id", getProductById);
-router.post("/", authMiddleware, validate(createProductSchema), createProduct);
-router.put("/:id", authMiddleware, validate(updateProductSchema), updateProduct);
-router.delete("/:id", authMiddleware, deleteProduct);
+router.get("/", authMiddleware, requireRole(["ADMIN", "SALES", "WAREHOUSE", "ACCOUNTS"]), getProducts);
+router.get("/:id", authMiddleware, requireRole(["ADMIN", "SALES", "WAREHOUSE", "ACCOUNTS"]), getProductById);
+router.post("/", authMiddleware, requireRole(["ADMIN", "WAREHOUSE"]), validate(createProductSchema), createProduct);
+router.put("/:id", authMiddleware, requireRole(["ADMIN", "WAREHOUSE"]), validate(updateProductSchema), updateProduct);
+router.delete("/:id", authMiddleware, requireRole(["ADMIN"]), deleteProduct);
 
 export default router;

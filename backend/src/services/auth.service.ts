@@ -3,7 +3,7 @@ import { prisma } from "../config/database";
 import { comparePassword, hashPassword } from "../utils/hash";
 import { generateToken } from "../utils/jwt";
 
-export const registerUser = async (payload: { name: string; email: string; password: string; role: Role }) => {
+export const registerUser = async (payload: { name: string; email: string; password: string }) => {
   const normalizedEmail = payload.email.trim().toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
@@ -17,7 +17,7 @@ export const registerUser = async (payload: { name: string; email: string; passw
       name: payload.name.trim(),
       email: normalizedEmail,
       password: await hashPassword(payload.password),
-      role: payload.role || Role.ADMIN,
+      role: Role.SALES,
     },
   });
 
@@ -52,4 +52,3 @@ export const loginUser = async (payload: { email: string; password: string }) =>
     token,
   };
 };
-
