@@ -1,0 +1,9 @@
+challan_id,customer_id,customer_name,status,total_amount
+CH-001,CUST-001,"Northwind Distribution",CONFIRMED,45.50
+CH-002,CUST-002,Acme Retail,CONFIRMED,10.25
+CH-003,CUST-001,"Northwind Distribution",CONFIRMED,75.00
+CH-004,CUST-003,,CONFIRMED,10.00
+CH-001,CUST-001,"Northwind Distribution",CONFIRMED,45.50
+CH-005,CUST-004,Delta Wholesale,DRAFT,999.99
+CH-006,CUST-002,Acme Retail,CONFIRMED,not-a-number
+malformed,row

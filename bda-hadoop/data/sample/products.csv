@@ -1,0 +1,5 @@
+product_id,sku,name,current_stock,minimum_stock,price,warehouse
+PR-001,SKU-CBL-01,"USB-C Cable, 1m",3,4,10.25,Main
+PR-002,SKU-ADP-02,Power Adapter,15,5,25.00,Main
+PR-003,SKU-HUB-03,USB Hub,0,1,35.00,East
+PR-004,SKU-OPT-04,Accessory,,,0.00,
