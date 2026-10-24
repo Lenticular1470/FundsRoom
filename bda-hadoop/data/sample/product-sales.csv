@@ -1,0 +1,11 @@
+line_item_id,challan_id,product_id,product_name,quantity,unit_price,status
+LI-001,CH-001,PR-001,"USB-C Cable, 1m",2,10.25,CONFIRMED
+LI-002,CH-001,PR-002,Power Adapter,1,25.00,CONFIRMED
+LI-003,CH-002,PR-001,"USB-C Cable, 1m",1,10.25,CONFIRMED
+LI-004,CH-003,PR-002,Power Adapter,3,25.00,CONFIRMED
+LI-005,CH-004,PR-003,,2,5.00,CONFIRMED
+LI-001,CH-001,PR-001,"USB-C Cable, 1m",2,10.25,CONFIRMED
+LI-006,CH-005,PR-001,"USB-C Cable, 1m",5,10.25,DRAFT
+LI-007,CH-006,PR-001,"USB-C Cable, 1m",0,10.25,CONFIRMED
+LI-008,CH-007,PR-002,Power Adapter,2,not-a-price,CONFIRMED
+malformed,row

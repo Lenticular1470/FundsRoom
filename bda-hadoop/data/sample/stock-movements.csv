@@ -1,0 +1,8 @@
+movement_id,product_id,movement_type,quantity,reason,created_at
+MV-001,PR-001,IN,5,Initial receipt,2026-08-01T09:00:00Z
+MV-002,PR-001,OUT,2,Confirmed challan,2026-08-02T09:00:00Z
+MV-003,PR-002,OUT,1,Confirmed challan,2026-08-02T09:00:00Z
+MV-001,PR-001,IN,5,Initial receipt,2026-08-01T09:00:00Z
+MV-004,PR-003,OUT,1,Sample movement,2026-08-03T09:00:00Z
+MV-005,PR-002,IN,not-a-quantity,Malformed test,2026-08-03T09:00:00Z
+bad,row

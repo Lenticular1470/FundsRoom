@@ -5,3 +5,6 @@ dist
 prisma/migrations
 npm-debug.log
 .DS_Store
+bda-hadoop/target/
+bda-hadoop/output/
+bda-hadoop/data/live/
