@@ -15,7 +15,7 @@ export const registerSchema = z.object({
       .regex(/[a-z]/, "Password must contain at least 1 lowercase letter")
       .regex(/[0-9]/, "Password must contain at least 1 number")
       .regex(/[^A-Za-z0-9]/, "Password must contain at least 1 special character"),
-    role: z.literal("SALES").optional(),
+    role: z.enum(["SALES", "USER"]).optional(),
   }),
 });
 
@@ -49,4 +49,3 @@ export const changePasswordSchema = z.object({
       .regex(/[^A-Za-z0-9]/, "Password must contain at least 1 special character"),
   }),
 });
-

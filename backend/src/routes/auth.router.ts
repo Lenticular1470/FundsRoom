@@ -26,6 +26,10 @@ import { authMiddleware } from "../middlewares/auth.middleware";
  *                 type: string
  *               password:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [SALES, USER]
+ *                 description: Both public signup roles receive Sales operations access.
  *     responses:
  *       "201":
  *         description: Created

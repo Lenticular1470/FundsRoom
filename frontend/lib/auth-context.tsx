@@ -105,7 +105,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (response.data?.data) {
           const serverUser = response.data.data
-          const normalizedRole = roleMap[serverUser.role] ?? parsed.user.role
+          const normalizedRole = roleMap[serverUser.role]
+          if (!normalizedRole) {
+            logout()
+            return
+          }
+
           const updatedUser: User = {
             id: serverUser.id || parsed.user.id,
             name: serverUser.name || parsed.user.name,

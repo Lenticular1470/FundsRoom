@@ -48,6 +48,7 @@ const registerSchema = z.object({
     .regex(/[a-z]/, 'Password must contain at least 1 lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least 1 number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least 1 special character'),
+  role: z.enum(['SALES', 'USER']),
 })
 
 type SignInFormData = z.infer<typeof signInSchema>
@@ -55,6 +56,7 @@ type RegisterFormData = z.infer<typeof registerSchema>
 
 const roleMap: Record<string, UserRole> = {
   ADMIN: 'admin',
+  USER: 'sales',
   SALES: 'sales',
   WAREHOUSE: 'warehouse',
   ACCOUNTS: 'accounts',
@@ -106,6 +108,7 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
       name: '',
       email: '',
       password: '',
+      role: 'SALES',
     },
   })
 
@@ -131,7 +134,11 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
         throw new Error('Invalid response structure from backend.')
       }
 
-      const normalizedRole = roleMap[userData.role] ?? 'admin'
+      const normalizedRole = roleMap[userData.role]
+      if (!normalizedRole) {
+        throw new Error('Your account has an unsupported role. Please contact an administrator.')
+      }
+
       login(
         {
           id: userData.id,
@@ -159,6 +166,7 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
         name: data.name,
         email: data.email,
         password: data.password,
+        role: data.role,
       })
 
       showToast('success', 'Account created successfully! Please sign in.')
@@ -449,9 +457,21 @@ export default function LoginForm({ initialTab = 'signin' }: { initialTab?: 'sig
                   )}
                 </div>
 
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  New accounts are created with Sales access. Contact an administrator if your role should be changed.
-                </p>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-amber-900 dark:text-amber-100">
+                    Role
+                  </label>
+                  <select
+                    {...registerRegister('role')}
+                    className="w-full px-4 py-3 rounded-2xl border border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-slate-800 text-amber-900 dark:text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                  >
+                    <option value="SALES">Sales</option>
+                    <option value="USER">User (Sales access)</option>
+                  </select>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Public signup is limited to Sales access. Contact an administrator for Warehouse, Accounts, or Admin access.
+                  </p>
+                </div>
 
                 {/* Password */}
                 <div className="space-y-1.5">

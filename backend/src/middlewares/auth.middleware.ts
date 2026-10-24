@@ -1,4 +1,5 @@
 ﻿import { Request, Response, NextFunction } from "express";
+import { Role } from "@prisma/client";
 import { verifyToken } from "../utils/jwt";
 import { errorResponse } from "../utils/response";
 
@@ -12,7 +13,8 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
   try {
     const payload = verifyToken(token);
-    req.user = { id: payload.id as string, role: payload.role as string };
+    const role = payload.role === Role.USER ? Role.SALES : payload.role;
+    req.user = { id: payload.id as string, role: role as string };
     return next();
   } catch (error) {
     return errorResponse(res, "Invalid token.", [], 401);
