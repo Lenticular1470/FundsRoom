@@ -5,6 +5,7 @@ import {
   getWarehouseDashboardStatsService,
   getAccountsDashboardStatsService,
 } from "../services/dashboard.service";
+import { getBdaAnalyticsService } from "../services/bda.service";
 
 export const getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -28,6 +29,15 @@ export const getAccountsDashboardStats = async (req: Request, res: Response, nex
   try {
     const data = await getAccountsDashboardStatsService();
     return successResponse(res, "Accounts dashboard data fetched successfully.", data);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getBdaDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await getBdaAnalyticsService();
+    return successResponse(res, "BDA analytics fetched successfully.", data);
   } catch (error) {
     return next(error);
   }

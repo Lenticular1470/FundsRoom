@@ -56,6 +56,31 @@ interface ChallanStats {
   cancelled: number
 }
 
+interface BdaAnalytics {
+  configured: boolean
+  available: boolean
+  message: string
+  missingOutputs: string[]
+  productSales: Array<{ productId: string; name: string; units: number; revenue: number }>
+  customerSales: Array<{ customerId: string; name: string; transactions: number; revenue: number }>
+  topCustomers: Array<{ rank: string; customerId: string; name: string; transactions: number; revenue: number }>
+  inventory: Array<{
+    productId: string
+    sku: string
+    name: string
+    stock: number
+    minimumStock: number
+    lowStock: boolean
+    stockValue: number
+    warehouse: string
+    movementIn: number
+    movementOut: number
+  }>
+  challanSummary: Array<{ status: string; challans: number; itemQuantity: number; confirmedSales: number }>
+  dailySales: Array<{ date: string; challans: number; revenue: number }>
+  monthlySales: Array<{ month: string; challans: number; revenue: number }>
+}
+
 const COLORS = ['#d97706', '#b45309', '#92400e', '#fbbf24']
 
 export default function AdminDashboard() {
@@ -69,6 +94,8 @@ export default function AdminDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [bdaAnalytics, setBdaAnalytics] = useState<BdaAnalytics | null>(null)
+  const [bdaError, setBdaError] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +120,13 @@ export default function AdminDashboard() {
         setError(err?.message || 'Failed to load dashboard data.')
       } finally {
         setLoading(false)
+      }
+
+      try {
+        setBdaAnalytics(await apiGet<BdaAnalytics>('/dashboard/bda', token))
+        setBdaError(null)
+      } catch (bdaErr: any) {
+        setBdaError(bdaErr?.message || 'Unable to load Hadoop analytics.')
       }
     }
     load()
@@ -164,6 +198,16 @@ export default function AdminDashboard() {
     },
   ]
 
+  const confirmedBdaSummary = bdaAnalytics?.challanSummary.find((entry) => entry.status === 'CONFIRMED')
+  const bdaKpis = bdaAnalytics?.available
+    ? [
+        { label: 'BDA Confirmed Revenue', value: formatCurrency(confirmedBdaSummary?.confirmedSales ?? 0) },
+        { label: 'Top Customers Ranked', value: bdaAnalytics.topCustomers.length },
+        { label: 'Products Analyzed', value: bdaAnalytics.productSales.length },
+        { label: 'Low-Stock Products', value: bdaAnalytics.inventory.filter((product) => product.lowStock).length },
+      ]
+    : []
+
   return (
     <div>
       <DashboardHeader
@@ -223,6 +267,106 @@ export default function AdminDashboard() {
               </motion.div>
             ))}
           </div>
+
+          {/* Hadoop BDA Results */}
+          <section className="mb-8 rounded-xl border border-border bg-card p-6">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">BDA Framework Analytics</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Hadoop MapReduce summaries from the latest exported dataset.</p>
+              </div>
+              {bdaAnalytics?.available && (
+                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">Results loaded</span>
+              )}
+            </div>
+
+            {bdaError && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{bdaError}</p>}
+            {!bdaAnalytics && !bdaError && <p className="text-sm text-muted-foreground">Loading BDA results...</p>}
+            {bdaAnalytics && !bdaAnalytics.available && (
+              <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-semibold">{bdaAnalytics.message}</p>
+                {!bdaAnalytics.configured && <p className="mt-1">Set the backend environment variable BDA_RESULTS_DIR to the parent folder containing the six Hadoop job output folders.</p>}
+                {bdaAnalytics.missingOutputs.length > 0 && (
+                  <p className="mt-1">Missing outputs: {bdaAnalytics.missingOutputs.join(', ')}</p>
+                )}
+              </div>
+            )}
+
+            {bdaAnalytics?.available && (
+              <>
+                <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  {bdaKpis.map((kpi) => (
+                    <div key={kpi.label} className="rounded-lg border border-border p-4">
+                      <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                      <p className="mt-1 text-xl font-bold text-foreground">{kpi.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-3 font-semibold text-foreground">Monthly Sales (last six calendar months)</h3>
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-border text-xs text-muted-foreground"><tr><th className="py-2">Month</th><th className="py-2 text-right">Challans</th><th className="py-2 text-right">Revenue</th></tr></thead>
+                      <tbody className="divide-y divide-border">
+                        {bdaAnalytics.monthlySales.map((row) => <tr key={row.month}><td className="py-2">{row.month}</td><td className="py-2 text-right">{row.challans}</td><td className="py-2 text-right">{formatCurrency(row.revenue)}</td></tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-3 font-semibold text-foreground">Top Customers</h3>
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-border text-xs text-muted-foreground"><tr><th className="py-2">Rank / Customer</th><th className="py-2 text-right">Transactions</th><th className="py-2 text-right">Revenue</th></tr></thead>
+                      <tbody className="divide-y divide-border">
+                        {bdaAnalytics.topCustomers.map((row) => <tr key={row.customerId}><td className="py-2">{row.rank} · {row.name}</td><td className="py-2 text-right">{row.transactions}</td><td className="py-2 text-right">{formatCurrency(row.revenue)}</td></tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-3 font-semibold text-foreground">Product Sales</h3>
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-border text-xs text-muted-foreground"><tr><th className="py-2">Product</th><th className="py-2 text-right">Units</th><th className="py-2 text-right">Revenue</th></tr></thead>
+                      <tbody className="divide-y divide-border">
+                        {bdaAnalytics.productSales.slice(0, 10).map((row) => <tr key={row.productId}><td className="py-2">{row.name}</td><td className="py-2 text-right">{row.units}</td><td className="py-2 text-right">{formatCurrency(row.revenue)}</td></tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-3 font-semibold text-foreground">Inventory Snapshot & Movements</h3>
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-border text-xs text-muted-foreground"><tr><th className="py-2">Product</th><th className="py-2 text-right">Stock</th><th className="py-2 text-right">In / Out</th><th className="py-2">Status</th></tr></thead>
+                      <tbody className="divide-y divide-border">
+                        {bdaAnalytics.inventory.slice(0, 10).map((row) => <tr key={row.productId}><td className="py-2">{row.name || row.sku}</td><td className="py-2 text-right">{row.stock}</td><td className="py-2 text-right">{row.movementIn} / {row.movementOut}</td><td className={`py-2 ${row.lowStock ? 'font-semibold text-amber-700' : 'text-green-700'}`}>{row.lowStock ? 'Low' : 'OK'}</td></tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-3 font-semibold text-foreground">Daily Confirmed Sales</h3>
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-border text-xs text-muted-foreground"><tr><th className="py-2">Date</th><th className="py-2 text-right">Challans</th><th className="py-2 text-right">Revenue</th></tr></thead>
+                      <tbody className="divide-y divide-border">
+                        {bdaAnalytics.dailySales.slice(-10).reverse().map((row) => <tr key={row.date}><td className="py-2">{row.date}</td><td className="py-2 text-right">{row.challans}</td><td className="py-2 text-right">{formatCurrency(row.revenue)}</td></tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-3 font-semibold text-foreground">Challan Status Summary</h3>
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-border text-xs text-muted-foreground"><tr><th className="py-2">Status</th><th className="py-2 text-right">Challans</th><th className="py-2 text-right">Units</th><th className="py-2 text-right">Confirmed Sales</th></tr></thead>
+                      <tbody className="divide-y divide-border">
+                        {bdaAnalytics.challanSummary.map((row) => <tr key={row.status}><td className="py-2">{row.status}</td><td className="py-2 text-right">{row.challans}</td><td className="py-2 text-right">{row.itemQuantity}</td><td className="py-2 text-right">{formatCurrency(row.confirmedSales)}</td></tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

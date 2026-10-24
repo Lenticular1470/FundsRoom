@@ -5,6 +5,7 @@ import {
   getDashboardStats,
   getWarehouseDashboardStats,
   getAccountsDashboardStats,
+  getBdaDashboardStats,
 } from "../controllers/dashboard.controller";
 
 /**
@@ -48,5 +49,6 @@ const router = Router();
 router.get("/", authMiddleware, requireRole(["ADMIN", "SALES"]), getDashboardStats);
 router.get("/warehouse", authMiddleware, requireRole(["ADMIN", "WAREHOUSE"]), getWarehouseDashboardStats);
 router.get("/accounts", authMiddleware, requireRole(["ADMIN", "ACCOUNTS"]), getAccountsDashboardStats);
+router.get("/bda", authMiddleware, requireRole(["ADMIN"]), getBdaDashboardStats);
 
 export default router;

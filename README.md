@@ -188,6 +188,23 @@ Deploy the frontend to Vercel, Netlify, or Render Static.
 - Challan confirmation and stock deduction are executed inside atomic database transactions (`prisma.$transaction`) to prevent race conditions or negative inventory.
 - Snapshot storage ensures sales challans preserve historical product and customer state even if prices or customer data change later.
 
+## Hadoop BDA Analytics in the Admin Dashboard
+
+The Admin dashboard can display the standalone Hadoop MapReduce results through the Admin-only `GET /api/dashboard/bda` endpoint. The Hadoop jobs remain a separate batch process: run them to generate output first, then point the backend at the parent results directory with `BDA_RESULTS_DIR`. The dashboard reads the known output files; it does not start Hadoop jobs or write to the database.
+
+The configured directory must contain these relative paths:
+
+```text
+product-sales/part-r-00000
+customer-sales/customer_totals/part-r-00000
+customer-sales/top_customers/part-r-00000
+inventory/part-r-00000
+challan-summary/part-r-00000
+date-sales/part-r-00000
+```
+
+Run each Hadoop job using the same parent output directory and the child names shown above. Set `BDA_RESULTS_DIR` in the backend environment to that parent directory, restart the API, and open or refresh the Admin dashboard. Until configured, or while outputs are missing, the dashboard reports the configuration/missing files instead of showing invented zeros. See [bda-hadoop/README.md](bda-hadoop/README.md) for the CSV export, job execution, and validation procedure. Live database extraction requires a read-only PostgreSQL account and is not automatically performed by the dashboard.
+
 ## Known Limitations & Future Enhancements
 
 - Multi-Warehouse Transfer: Current version tracks stock locations by string labels; future enhancements can introduce full inter-warehouse transfer workflows.
